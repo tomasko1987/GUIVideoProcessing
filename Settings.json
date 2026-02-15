@@ -1,0 +1,33 @@
+{
+  "IPAddress": [
+    "http://192.168.50.96:81/stream"
+  ],
+  "ROIX": 22,
+  "ROIY": 56,
+  "ROIWidth": 17,
+  "ROIHeight": 23,
+  "ResizeScale": 4.0,
+  "BilateralD": 5,
+  "BilateralSigmaColor": 40,
+  "BilateralSigmaSpace": 40,
+  "CLAHEClipLimit": 5.0,
+  "CLAHETileGridSizeX": 2,
+  "CLAHETileGridSizeY": 2,
+  "AdaptiveThresholdBlockSize": 11,
+  "AdaptiveThresholdC": 2.0,
+  "MorphologyKernelSize": 3,
+  "MorphologyOpenIterations": 1,
+  "MorphologyCloseIterations": 1,
+  "MinArea": 30,
+  "FromLeft": 50,
+  "FromRight": 50,
+  "NumEvalIntervalSeconds": 10,
+  "MySqlEnabled": false,
+  "MySqlHost": "127.0.0.1",
+  "MySqlPort": 3306,
+  "MySqlDatabase": "gui_video_processing",
+  "MySqlUsername": "root",
+  "MySqlPassword": "",
+  "MySqlTable": "numreg_readings",
+  "MySqlReconnectDelaySeconds": 5
+}

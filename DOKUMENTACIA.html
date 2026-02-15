@@ -1,0 +1,3868 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GUIVideoProcessing - Kompletná dokumentácia</title>
+    <style>
+        @page {
+            margin: 2cm;
+            size: A4;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .nav-chapters {
+            background: #34495e;
+            padding: 20px;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        .nav-chapters h3 {
+            color: white;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+        }
+
+        .nav-chapters ul {
+            list-style: none;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .nav-chapters li {
+            margin: 0;
+        }
+
+        .nav-chapters a {
+            display: inline-block;
+            background: #3498db;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+
+        .nav-chapters a:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .chapter {
+            margin-bottom: 60px;
+            border-top: 5px solid #3498db;
+            padding-top: 30px;
+        }
+
+        .chapter-header {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+            padding: 20px 30px;
+            margin: -30px -40px 30px -40px;
+            border-radius: 0;
+        }
+
+        .chapter-header h2 {
+            font-size: 2em;
+            margin-bottom: 5px;
+        }
+
+        .chapter-header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        h1 {
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+            margin: 30px 0 20px 0;
+            font-size: 2em;
+        }
+
+        h2 {
+            color: #2980b9;
+            margin: 25px 0 15px 0;
+            font-size: 1.5em;
+            border-left: 4px solid #3498db;
+            padding-left: 10px;
+        }
+
+        h3 {
+            color: #34495e;
+            margin: 20px 0 10px 0;
+            font-size: 1.2em;
+        }
+
+        h4 {
+            color: #555;
+            margin: 15px 0 10px 0;
+            font-size: 1.1em;
+        }
+
+        p {
+            margin: 10px 0;
+            text-align: justify;
+        }
+
+        code {
+            background: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #e74c3c;
+        }
+
+        pre {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 0.85em;
+            line-height: 1.4;
+        }
+
+        pre code {
+            background: transparent;
+            color: #ecf0f1;
+            padding: 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            background: #fff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        th {
+            background: #3498db;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #ecf0f1;
+        }
+
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        tr:hover {
+            background: #e8f4f8;
+        }
+
+        ul, ol {
+            margin: 10px 0 10px 30px;
+        }
+
+        li {
+            margin: 5px 0;
+        }
+
+        .checkmark {
+            color: #27ae60;
+            font-weight: bold;
+        }
+
+        .info-box {
+            background: #d1ecf1;
+            border-left: 4px solid #17a2b8;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 3px;
+        }
+
+        .success-box {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 3px;
+        }
+
+        .warning-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 3px;
+        }
+
+        .danger-box {
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 3px;
+        }
+
+        .code-section {
+            margin: 20px 0;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .code-header {
+            background: #495057;
+            color: white;
+            padding: 8px 15px;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+
+        .change-before {
+            background: #ffebee;
+            border-left: 4px solid #e74c3c;
+            padding: 10px 15px;
+            margin: 10px 0;
+        }
+
+        .change-after {
+            background: #e8f5e9;
+            border-left: 4px solid #27ae60;
+            padding: 10px 15px;
+            margin: 10px 0;
+        }
+
+        .file-badge {
+            display: inline-block;
+            background: #3498db;
+            color: white;
+            padding: 3px 10px;
+            border-radius: 3px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin: 5px 5px 5px 0;
+        }
+
+        .new-badge {
+            background: #27ae60;
+        }
+
+        .modified-badge {
+            background: #f39c12;
+        }
+
+        .architecture-diagram {
+            background: #f8f9fa;
+            border: 2px solid #dee2e6;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+            font-family: 'Consolas', monospace;
+            white-space: pre;
+            overflow-x: auto;
+        }
+
+        .method-card {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 20px;
+            margin: 15px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .method-card h4 {
+            color: #2980b9;
+            margin-top: 0;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+
+        .toc-box {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+
+        .toc-box h3 {
+            margin-top: 0;
+            color: #2980b9;
+        }
+
+        .toc-box ul {
+            list-style: none;
+            margin-left: 0;
+        }
+
+        .toc-box li {
+            margin: 8px 0;
+        }
+
+        .toc-box a {
+            color: #3498db;
+            text-decoration: none;
+            padding: 5px 10px;
+            display: block;
+            border-radius: 3px;
+            transition: all 0.2s;
+        }
+
+        .toc-box a:hover {
+            background: #3498db;
+            color: white;
+        }
+
+        .page-break {
+            page-break-after: always;
+        }
+
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+
+            .container {
+                box-shadow: none;
+            }
+
+            .nav-chapters {
+                position: static;
+            }
+
+            .no-print {
+                display: none;
+            }
+
+            pre, table, .method-card {
+                page-break-inside: avoid;
+            }
+
+            h1, h2, h3 {
+                page-break-after: avoid;
+            }
+        }
+
+        .print-button {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: #3498db;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 50px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1.1em;
+            border: none;
+            transition: all 0.3s;
+            z-index: 9999;
+        }
+
+        .print-button:hover {
+            background: #2980b9;
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- HEADER -->
+        <div class="header">
+            <h1>📚 GUIVideoProcessing</h1>
+            <p>Kompletná technická dokumentácia</p>
+            <p style="font-size: 0.9em; margin-top: 10px;">Verzia 1.0 | 2026-01-08</p>
+        </div>
+
+        <!-- NAVIGATION -->
+        <div class="nav-chapters">
+            <h3>📑 Kapitoly:</h3>
+            <ul>
+                <li><a href="#kapitola1">Kapitola 1: Pôvodný kód</a></li>
+                <li><a href="#kapitola2">Kapitola 2: Settings.json</a></li>
+                <li><a href="#kapitola3">Kapitola 3: ChangeMatrix</a></li>
+            </ul>
+        </div>
+
+        <!-- CONTENT -->
+        <div class="content">
+
+            <!-- ============================================ -->
+            <!-- KAPITOLA 1: PÔVODNÝ KÓD -->
+            <!-- ============================================ -->
+            <div class="chapter" id="kapitola1">
+                <div class="chapter-header">
+                    <h2>Kapitola 1: Dokumentácia pôvodného kódu</h2>
+                    <p>Analýza a vysvetlenie implementácie pred zmenami</p>
+                </div>
+
+                <div class="toc-box">
+                    <h3>📋 Obsah kapitoly</h3>
+                    <ul>
+                        <li><a href="#k1-prehlad">1.1 Prehľad projektu</a></li>
+                        <li><a href="#k1-architektura">1.2 Architektúra</a></li>
+                        <li><a href="#k1-program">1.3 Program.cs - Entry point</a></li>
+                        <li><a href="#k1-logger">1.4 Logger.cs - Logging systém</a></li>
+                        <li><a href="#k1-mainform">1.5 MainForm.cs - Hlavná logika</a></li>
+                        <li><a href="#k1-designer">1.6 MainForm.Designer.cs - UI</a></li>
+                    </ul>
+                </div>
+
+                <h2 id="k1-prehlad">1.1 Prehľad projektu</h2>
+
+                <div class="info-box">
+                    <h4>Základné informácie</h4>
+                    <table>
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Hodnota</th>
+                        </tr>
+                        <tr>
+                            <td><strong>Názov projektu</strong></td>
+                            <td>GUIVideoProcessing</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Platforma</strong></td>
+                            <td>.NET 8.0 Windows</td>
+                        </tr>
+                        <tr>
+                            <td><strong>UI Framework</strong></td>
+                            <td>Windows Forms</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Jazyk</strong></td>
+                            <td>C# 12.0</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Computer Vision</strong></td>
+                            <td>OpenCvSharp4 (v4.11.0)</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <h3>Účel aplikácie</h3>
+                <p>Aplikácia slúži na <strong>real-time spracovanie video streamu z ESP32-CAM</strong> kamery. Hlavné funkcie:</p>
+                <ul>
+                    <li>Pripojenie na ESP32-CAM stream (MJPEG over HTTP)</li>
+                    <li>Výber ROI (Region of Interest) - oblasti záujmu</li>
+                    <li>Zväčšenie ROI pre detailné spracovanie</li>
+                    <li>Image processing pipeline (CLAHE, threshold, morphology, filtering)</li>
+                    <li>Príprava obrazu pre OCR (detekcia číselných údajov)</li>
+                    <li>Thread-safe asynchrónne spracovanie</li>
+                    <li>Robustný logging systém s rotáciou</li>
+                </ul>
+
+                <h3>Závislosti (NuGet packages)</h3>
+                <table>
+                    <tr>
+                        <th>Package</th>
+                        <th>Verzia</th>
+                        <th>Účel</th>
+                    </tr>
+                    <tr>
+                        <td>OpenCvSharp4</td>
+                        <td>4.11.0.20250507</td>
+                        <td>Hlavná knižnica pre computer vision</td>
+                    </tr>
+                    <tr>
+                        <td>OpenCvSharp4.Extensions</td>
+                        <td>4.11.0.20250507</td>
+                        <td>Integrácia s .NET (Bitmap konverzie)</td>
+                    </tr>
+                    <tr>
+                        <td>OpenCvSharp4.runtime.win</td>
+                        <td>4.11.0.20250507</td>
+                        <td>Native knižnice pre Windows (FFmpeg)</td>
+                    </tr>
+                </table>
+
+                <h2 id="k1-architektura">1.2 Architektúra</h2>
+
+                <h3>Štruktúra projektu</h3>
+                <div class="architecture-diagram">
+GUIVideoProcessing/
+├── Program.cs              (Entry point - 17 riadkov)
+├── Logger.cs               (Logging systém - 306 riadkov)
+├── MainForm.cs             (Hlavná logika - 1093 riadkov)
+├── MainForm.Designer.cs    (UI komponenty - 471 riadkov)
+├── MainForm.resx           (Resources)
+└── GUIVideoProcessing.csproj
+                </div>
+
+                <h3>Architektúra tried</h3>
+                <div class="architecture-diagram">
+┌─────────────────────────────────────────────────┐
+│              Program (static)                   │
+│  - Main()                                       │
+│  - ApplicationConfiguration.Initialize()        │
+│  - Application.Run(new MainForm())              │
+└─────────────────────┬───────────────────────────┘
+                      │
+                      │ vytvorí
+                      ▼
+┌─────────────────────────────────────────────────┐
+│           MainForm : Form                       │
+│  ┌───────────────────────────────────────────┐  │
+│  │ FIELDS:                                   │  │
+│  │ - Logger _logger                          │  │
+│  │ - VideoCapture _cap                       │  │
+│  │ - CancellationTokenSource _cts            │  │
+│  │ - bool _running                           │  │
+│  │ - Mat _lastRoi, _lastUp, _lastContrast    │  │
+│  │ - object _capLock, _roiLock               │  │
+│  └───────────────────────────────────────────┘  │
+│                                                 │
+│  ┌───────────────────────────────────────────┐  │
+│  │ METHODS:                                  │  │
+│  │ - MainForm()              (konštruktor)   │  │
+│  │ - btnStart_Click()        (event)         │  │
+│  │ - btnStop_Click()         (event)         │  │
+│  │ - CaptureLoop()           (thread)        │  │
+│  │ - ProcessFrame()          (ROI extract)   │  │
+│  │ - Up()                    (resize)        │  │
+│  │ - Pipeline()              (image process) │  │
+│  │ - StopCapture()           (cleanup)       │  │
+│  └───────────────────────────────────────────┘  │
+└─────────────────────┬───────────────────────────┘
+                      │
+                      │ používa
+                      ▼
+┌─────────────────────────────────────────────────┐
+│         Logger : IDisposable                    │
+│  ┌───────────────────────────────────────────┐  │
+│  │ FIELDS:                                   │  │
+│  │ - BlockingCollection<string> _queue       │  │
+│  │ - CancellationTokenSource _cts            │  │
+│  │ - Task _writerTask                        │  │
+│  │ - StreamWriter _writer                    │  │
+│  └───────────────────────────────────────────┘  │
+│                                                 │
+│  ┌───────────────────────────────────────────┐  │
+│  │ METHODS:                                  │  │
+│  │ - Log(level, message)                     │  │
+│  │ - Debug/Info/Warn/Error()                 │  │
+│  │ - WriterLoop()            (background)    │  │
+│  │ - RotateIfNeeded()        (auto-rotate)   │  │
+│  │ - Dispose()               (cleanup)       │  │
+│  └───────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────┘
+                </div>
+
+                <h3>Threading model</h3>
+                <div class="info-box">
+                    <p>Aplikácia používa <strong>3 hlavné vlákna</strong>:</p>
+                    <table>
+                        <tr>
+                            <th>Vlákno</th>
+                            <th>Účel</th>
+                            <th>Synchronizácia</th>
+                        </tr>
+                        <tr>
+                            <td><strong>UI Thread</strong></td>
+                            <td>Windows Forms UI, event handlers, PictureBox update</td>
+                            <td>-</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Capture Thread</strong></td>
+                            <td>CaptureLoop() - čítanie framov z streamu</td>
+                            <td>_capLock, _roiLock, Invoke()</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Logger Thread</strong></td>
+                            <td>WriterLoop() - asynchrónny zápis do log súboru</td>
+                            <td>BlockingCollection, _rotateLock</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <div class="page-break"></div>
+
+                <h2 id="k1-program">1.3 Program.cs - Entry point</h2>
+
+                <div class="method-card">
+                    <h4>Program.cs</h4>
+                    <p><strong>Riadkov kódu:</strong> 17</p>
+                    <p><strong>Účel:</strong> Entry point aplikácie, inicializácia Windows Forms</p>
+
+                    <pre><code>namespace GUIVideoProcessing
+{
+    internal static class Program
+    {
+        [STAThread]
+        static void Main()
+        {
+            ApplicationConfiguration.Initialize();
+            Application.Run(new MainForm());
+        }
+    }
+}</code></pre>
+
+                    <h4>Vysvetlenie:</h4>
+                    <table>
+                        <tr>
+                            <th>Element</th>
+                            <th>Popis</th>
+                        </tr>
+                        <tr>
+                            <td><code>[STAThread]</code></td>
+                            <td>Single-Threaded Apartment - vyžadované pre Windows Forms (COM interop)</td>
+                        </tr>
+                        <tr>
+                            <td><code>ApplicationConfiguration.Initialize()</code></td>
+                            <td>Inicializuje DPI nastavenia, vizuálne štýly (.NET 6+)</td>
+                        </tr>
+                        <tr>
+                            <td><code>Application.Run(new MainForm())</code></td>
+                            <td>Spustí message loop, vytvorí a zobrazí hlavné okno</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <div class="page-break"></div>
+
+                <h2 id="k1-logger">1.4 Logger.cs - Logging systém</h2>
+
+                <div class="info-box">
+                    <h4>Charakteristika</h4>
+                    <ul>
+                        <li><strong>Riadkov kódu:</strong> 306</li>
+                        <li><strong>Architektúra:</strong> Producer-Consumer pattern</li>
+                        <li><strong>Thread-safety:</strong> BlockingCollection + locks</li>
+                        <li><strong>Rotácia:</strong> Denná + podľa veľkosti (5 MB)</li>
+                    </ul>
+                </div>
+
+                <h3>Log levely</h3>
+                <pre><code>public enum LogLevel
+{
+    Debug = 0,    // Detailné debug informácie
+    Info = 1,     // Informačné správy
+    Warn = 2,     // Varovania
+    Error = 3     // Chyby a výnimky
+}</code></pre>
+
+                <h3>Kľúčové fieldy</h3>
+                <table>
+                    <tr>
+                        <th>Field</th>
+                        <th>Typ</th>
+                        <th>Účel</th>
+                    </tr>
+                    <tr>
+                        <td><code>_queue</code></td>
+                        <td>BlockingCollection&lt;string&gt;</td>
+                        <td>Thread-safe fronta log správ (kapacita 10,000)</td>
+                    </tr>
+                    <tr>
+                        <td><code>_cts</code></td>
+                        <td>CancellationTokenSource</td>
+                        <td>Signalizácia zastavenia writer threadu</td>
+                    </tr>
+                    <tr>
+                        <td><code>_writerTask</code></td>
+                        <td>Task</td>
+                        <td>Background task pre zápis do súboru</td>
+                    </tr>
+                    <tr>
+                        <td><code>_writer</code></td>
+                        <td>StreamWriter</td>
+                        <td>Handle na otvorený log súbor</td>
+                    </tr>
+                    <tr>
+                        <td><code>_currentDate</code></td>
+                        <td>DateTime</td>
+                        <td>Sleduje aktuálny dátum pre dennú rotáciu</td>
+                    </tr>
+                </table>
+
+                <h3>Hlavné metódy</h3>
+
+                <div class="method-card">
+                    <h4>Konštruktor: Logger()</h4>
+                    <pre><code>public Logger(
+    string logDirectory,
+    string filePrefix = "log",
+    LogLevel minLevel = LogLevel.Debug,
+    long maxBytesPerFile = 5 * 1024 * 1024)</code></pre>
+
+                    <p><strong>Kroky inicializácie:</strong></p>
+                    <ol>
+                        <li>Uloží konfiguráciu (priečinok, prefix, min level, max size)</li>
+                        <li>Vytvorí log priečinok (ak neexistuje)</li>
+                        <li>Inicializuje BlockingCollection s kapacitou 10,000</li>
+                        <li>Vytvorí CancellationTokenSource</li>
+                        <li>Nastaví aktuálny dátum (DateTime.Today)</li>
+                        <li>Otvorí prvý log súbor (OpenWriterForDate)</li>
+                        <li>Spustí background task (WriterLoop)</li>
+                    </ol>
+                </div>
+
+                <div class="method-card">
+                    <h4>Metóda: Log(LogLevel level, string message)</h4>
+                    <pre><code>public void Log(LogLevel level, string message)
+{
+    if (level < _minLevel) return;
+
+    string ts = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
+    string line = $"{ts} | {level.ToString().ToUpper()} | {message}";
+
+    if (!_queue.TryAdd(line))
+    {
+        // Fronta plná - správa sa zahodí (fail-safe)
+    }
+}</code></pre>
+
+                    <p><strong>Charakteristika:</strong></p>
+                    <ul>
+                        <li>Neblokujúca operácia (TryAdd namiesto Add)</li>
+                        <li>Ak je fronta plná → správa sa zahodí (nepochytateľné)</li>
+                        <li>Formát timestamp: <code>yyyy-MM-dd HH:mm:ss.fff</code></li>
+                        <li>Formát riadku: <code>timestamp | LEVEL | message</code></li>
+                    </ul>
+                </div>
+
+                <div class="method-card">
+                    <h4>Background task: WriterLoop()</h4>
+                    <pre><code>private void WriterLoop(CancellationToken token)
+{
+    try
+    {
+        foreach (var line in _queue.GetConsumingEnumerable(token))
+        {
+            RotateIfNeeded();      // Kontrola rotácie
+            _writer.WriteLine(line); // Zápis
+            _writer.Flush();         // Okamžitý flush
+        }
+    }
+    catch (OperationCanceledException) { }
+    catch { }
+    finally
+    {
+        _writer?.Dispose();
+    }
+}</code></pre>
+
+                    <p><strong>Vlastnosti:</strong></p>
+                    <ul>
+                        <li>Beží na background threade (Task.Run)</li>
+                        <li>Číta z BlockingCollection (blokuje keď je prázdna)</li>
+                        <li>Kontroluje rotáciu pred každým zápisom</li>
+                        <li>Flush po každom riadku (bezpečnosť pri crashe)</li>
+                        <li>Korektné ukončenie cez CancellationToken</li>
+                    </ul>
+                </div>
+
+                <h3>Rotácia log súborov</h3>
+
+                <div class="warning-box">
+                    <h4>Dva typy rotácie:</h4>
+                    <ol>
+                        <li><strong>Denná rotácia:</strong> Každý deň nový súbor <code>log_YYYY-MM-DD.txt</code></li>
+                        <li><strong>Rotácia podľa veľkosti:</strong> Ak súbor presiahne 5 MB → <code>log_YYYY-MM-DD_001.txt</code></li>
+                    </ol>
+                </div>
+
+                <div class="method-card">
+                    <h4>Metóda: RotateIfNeeded()</h4>
+                    <pre><code>private void RotateIfNeeded()
+{
+    lock (_rotateLock)
+    {
+        // 1) Denná rotácia
+        DateTime today = DateTime.Today;
+        if (today != _currentDate)
+        {
+            _currentDate = today;
+            _writer?.Dispose();
+            OpenWriterForDate(_currentDate);
+            return;
+        }
+
+        // 2) Rotácia podľa veľkosti
+        var info = new FileInfo(_currentFilePath);
+        if (info.Exists && info.Length >= _maxBytesPerFile)
+        {
+            _writer?.Dispose();
+            OpenWriterForDate(_currentDate);
+        }
+    }
+}</code></pre>
+                </div>
+
+                <h3>Príklad použitia</h3>
+                <pre><code>// Vytvorenie loggera
+_logger = new Logger(
+    logDirectory: "C:\\App\\logs",
+    filePrefix: "log",
+    minLevel: LogLevel.Debug,
+    maxBytesPerFile: 5 * 1024 * 1024
+);
+
+// Logovanie
+_logger.Debug("Application started");
+_logger.Info("Stream opened: http://192.168.50.96:81/stream");
+_logger.Warn("Frame dropped - queue full");
+_logger.Error("Failed to connect", exception);
+
+// Korektné ukončenie
+_logger.Dispose();</code></pre>
+
+                <div class="page-break"></div>
+
+                <h2 id="k1-mainform">1.5 MainForm.cs - Hlavná logika</h2>
+
+                <div class="info-box">
+                    <h4>Charakteristika</h4>
+                    <ul>
+                        <li><strong>Riadkov kódu:</strong> 1093</li>
+                        <li><strong>Zodpovednosti:</strong> UI logika, video capture, image processing</li>
+                        <li><strong>Threading:</strong> UI thread + capture thread</li>
+                        <li><strong>Synchronizácia:</strong> 2 locks (_capLock, _roiLock)</li>
+                    </ul>
+                </div>
+
+                <h3>Kľúčové fieldy</h3>
+                <table>
+                    <tr>
+                        <th>Field</th>
+                        <th>Typ</th>
+                        <th>Účel</th>
+                    </tr>
+                    <tr>
+                        <td><code>_cap</code></td>
+                        <td>VideoCapture</td>
+                        <td>OpenCV objekt pre čítanie streamu</td>
+                    </tr>
+                    <tr>
+                        <td><code>_cts</code></td>
+                        <td>CancellationTokenSource</td>
+                        <td>Zastavenie capture loopu</td>
+                    </tr>
+                    <tr>
+                        <td><code>_running</code></td>
+                        <td>bool</td>
+                        <td>Flag - beží stream?</td>
+                    </tr>
+                    <tr>
+                        <td><code>_lastRoi</code></td>
+                        <td>Mat</td>
+                        <td>Posledný vypočítaný ROI</td>
+                    </tr>
+                    <tr>
+                        <td><code>_lastUp</code></td>
+                        <td>Mat</td>
+                        <td>Zväčšený ROI (resize)</td>
+                    </tr>
+                    <tr>
+                        <td><code>_lastContrast</code></td>
+                        <td>Mat</td>
+                        <td>Po CLAHE (debug)</td>
+                    </tr>
+                    <tr>
+                        <td><code>_lastBinary</code></td>
+                        <td>Mat</td>
+                        <td>Po threshold + morphology</td>
+                    </tr>
+                    <tr>
+                        <td><code>_lastCleaned</code></td>
+                        <td>Mat</td>
+                        <td>Finálny výsledok po filtrovaní</td>
+                    </tr>
+                    <tr>
+                        <td><code>_capLock</code></td>
+                        <td>object</td>
+                        <td>Mutex pre _cap (Read vs Dispose)</td>
+                    </tr>
+                    <tr>
+                        <td><code>_roiLock</code></td>
+                        <td>object</td>
+                        <td>Mutex pre Mat objekty (UI vs capture)</td>
+                    </tr>
+                </table>
+
+                <h3>Konštruktor: MainForm()</h3>
+                <div class="method-card">
+                    <h4>Inicializácia UI komponentov</h4>
+                    <pre><code>public MainForm()
+{
+    InitializeComponent();
+
+    // Default URL
+    txtUrl.Text = "http://192.168.50.96:81/stream";
+
+    // ROI nastavenia (0-100%)
+    nudX.Value = 0;
+    nudY.Value = 0;
+    nudWidth.Value = 100;
+    nudHeight.Value = 100;
+
+    // Resize faktor (1, 3, 5)
+    nudResize.Minimum = 1;
+    nudResize.Maximum = 5;
+    nudResize.Increment = 2;
+    nudResize.Value = 3;
+
+    // Threshold parametre
+    nudBlockSize.Value = 41;  // nepárne
+    nudC.Value = 5;
+    nudMinArea.Value = 350;
+
+    btnStop.Enabled = false;
+
+    // Logger inicializácia
+    _logger = new Logger(_logsDir, "log", LogLevel.Debug);
+    _logger.Info("Application started");
+
+    // Vytvorenie snapshot priečinka
+    Directory.CreateDirectory(_snapshotsDir);
+}</code></pre>
+                </div>
+
+                <h3>Capture workflow</h3>
+                <div class="architecture-diagram">
+┌──────────────┐
+│ btnStart     │ Click
+│ _Click()     │───────┐
+└──────────────┘       │
+                       ▼
+          ┌────────────────────────┐
+          │ _running = true        │
+          │ btnStart.Enabled=false │
+          │ btnStop.Enabled=true   │
+          └────────┬───────────────┘
+                   │
+                   ▼
+          ┌────────────────────────┐
+          │ Task.Run(() =>         │
+          │   CaptureLoop(_cts))   │ ◄─── Background thread
+          └────────┬───────────────┘
+                   │
+┌──────────────────▼───────────────────┐
+│        CaptureLoop(token)            │
+│                                      │
+│  1. _cap = new VideoCapture(url)    │
+│  2. while (!token.Cancelled)         │
+│     {                                │
+│       3. lock(_capLock) {            │
+│            ok = _cap.Read(frame)     │
+│          }                           │
+│       4. display = ProcessFrame()    │
+│       5. Up()                        │
+│       6. Pipeline()                  │
+│       7. UpdateUI(display, cleaned)  │
+│     }                                │
+└──────────────────────────────────────┘
+                   │
+                   ▼
+          ┌────────────────────┐
+          │ StopCapture()      │
+          │ - Cancel token     │
+          │ - Dispose _cap     │
+          │ - Dispose Mats     │
+          │ - Reset UI         │
+          └────────────────────┘
+                </div>
+
+                <h3>Hlavné metódy</h3>
+
+                <div class="method-card">
+                    <h4>ProcessFrame(Mat frame) : Mat</h4>
+                    <p><strong>Účel:</strong> Extrakcia ROI z frame, kreslenie obdĺžnika</p>
+                    <p><strong>Algoritmus:</strong></p>
+                    <ol>
+                        <li><strong>Načítanie ROI parametrov</strong> z UI (percentá)
+                            <pre><code>double px = (double)nudX.Value / 100.0;
+double py = (double)nudY.Value / 100.0;
+double pw = (double)nudWidth.Value / 100.0;
+double ph = (double)nudHeight.Value / 100.0;</code></pre>
+                        </li>
+                        <li><strong>Prepočet na pixely</strong>
+                            <pre><code>int x = (int)(frame.Width * px);
+int y = (int)(frame.Height * py);
+int rw = (int)(frame.Width * pw);
+int rh = (int)(frame.Height * ph);</code></pre>
+                        </li>
+                        <li><strong>Validácia</strong> (ochrana proti out-of-bounds)
+                            <ul>
+                                <li>x, y >= 0</li>
+                                <li>x + rw <= frame.Width</li>
+                                <li>y + rh <= frame.Height</li>
+                                <li>rw, rh > 0</li>
+                            </ul>
+                        </li>
+                        <li><strong>Extrakcia ROI</strong>
+                            <pre><code>var roiRect = new Rect(x, y, rw, rh);
+lock (_roiLock)
+{
+    _lastRoi?.Dispose();
+    _lastRoi = new Mat(frame, roiRect).Clone();
+}</code></pre>
+                        </li>
+                        <li><strong>Kreslenie obdĺžnika</strong>
+                            <pre><code>Mat display = frame.Clone();
+Cv2.Rectangle(display, roiRect, new Scalar(0, 255, 0), 2);
+return display;</code></pre>
+                        </li>
+                    </ol>
+                </div>
+
+                <div class="method-card">
+                    <h4>Up() : void</h4>
+                    <p><strong>Účel:</strong> Zväčšenie ROI pre detailnejšie spracovanie</p>
+                    <pre><code>private void Up()
+{
+    Mat roiCopy = null;
+    double scale = (double)GetNudValueSafe(nudResize);
+
+    lock (_roiLock)
+    {
+        if (_lastRoi == null || _lastRoi.Empty()) return;
+        roiCopy = _lastRoi.Clone();
+    }
+
+    try
+    {
+        Mat upTemp = new Mat();
+        Cv2.Resize(roiCopy, upTemp, new Size(), scale, scale,
+                   InterpolationFlags.Cubic);
+
+        lock (_roiLock)
+        {
+            _lastUp?.Dispose();
+            _lastUp = upTemp;
+            upTemp = null;
+        }
+    }
+    finally
+    {
+        roiCopy?.Dispose();
+        upTemp?.Dispose();
+    }
+}</code></pre>
+
+                    <p><strong>Vlastnosti:</strong></p>
+                    <ul>
+                        <li>Thread-safe (Clone + locks)</li>
+                        <li>Interpolácia: Cubic (vysoká kvalita pre OCR)</li>
+                        <li>Scale faktor: 1×, 3×, 5× (nastaviteľné)</li>
+                    </ul>
+                </div>
+
+                <div class="method-card">
+                    <h4>Pipeline() : void</h4>
+                    <p><strong>Účel:</strong> Image processing pipeline pre prípravu OCR</p>
+                    <p><strong>Kroky algoritmu:</strong></p>
+
+                    <div class="architecture-diagram">
+_lastUp (zväčšený ROI)
+    │
+    ├─► 1. Grayscale (BGR → GRAY)
+    │       Cv2.CvtColor(BGR2GRAY)
+    │
+    ├─► 2. Bilateral Filter (noise reduction + edge preservation)
+    │       Cv2.BilateralFilter(d:9, sigmaColor:50, sigmaSpace:50)
+    │
+    ├─► 3. CLAHE (Contrast Limited Adaptive Histogram Equalization)
+    │       clipLimit: 2.0, tileGridSize: 8×8
+    │       → _lastContrast (debug)
+    │
+    ├─► 4. Gaussian Blur (zjemnenie)
+    │       Cv2.GaussianBlur(3×3)
+    │
+    ├─► 5. Adaptive Threshold (BinaryInv)
+    │       blockSize: 41 (nepárne), C: 5
+    │       → pozadie biele, čísla čierne
+    │       → _lastBinary (debug)
+    │
+    ├─► 6. Morphology Open (odstránenie bodiek)
+    │       kernel: 3×3 Rect, iterations: 1
+    │
+    ├─► 7. Morphology Close (vyplnenie dier)
+    │       kernel: 3×3 Rect, iterations: 1
+    │
+    └─► 8. Connected Components + Area filtering
+            minArea: 350 (nastaviteľné)
+            → odstránenie malých komponentov (šum)
+            → _lastCleaned (finálny výsledok)
+                    </div>
+
+                    <div class="success-box">
+                        <h4>Prečo tento pipeline?</h4>
+                        <ul>
+                            <li><strong>Bilateral Filter:</strong> Zníži šum, ale zachová hrany čísel</li>
+                            <li><strong>CLAHE:</strong> Lokálne zvýši kontrast (lepšie než globálny threshold)</li>
+                            <li><strong>Adaptive Threshold:</strong> Funguje aj pri nerovnomernom osvetlení</li>
+                            <li><strong>Morphology:</strong> Odstráni drobné artefakty</li>
+                            <li><strong>Area filtering:</strong> Odstráni bodky a šum (len veľké objekty = čísla)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <h3>Thread-safety mechanizmy</h3>
+
+                <div class="danger-box">
+                    <h4>Kritické sekcie</h4>
+                    <table>
+                        <tr>
+                            <th>Lock</th>
+                            <th>Chráni</th>
+                            <th>Problém bez locku</th>
+                        </tr>
+                        <tr>
+                            <td><code>_capLock</code></td>
+                            <td><code>_cap.Read()</code> vs <code>_cap.Dispose()</code></td>
+                            <td><strong>AccessViolationException</strong> (crash)</td>
+                        </tr>
+                        <tr>
+                            <td><code>_roiLock</code></td>
+                            <td>_lastRoi, _lastUp, _lastContrast, atď.</td>
+                            <td><strong>_dims error</strong>, memory corruption</td>
+                        </tr>
+                    </table>
+
+                    <p><strong>Príklad problému bez _capLock:</strong></p>
+                    <pre><code>// CAPTURE THREAD              // UI THREAD (STOP)
+_cap.Read(frame) ────────┐
+  ├─ native call        │   StopCapture()
+  │  (FFmpeg decode)    │     _cap.Dispose() ◄── CRASH!
+  └─ AccessViolation ◄──┘       (native free)
+
+// RIEŠENIE: lock pred Read + Dispose
+lock (_capLock) {
+    if (_cap == null) break;
+    ok = _cap.Read(frame);
+}</code></pre>
+                </div>
+
+                <div class="page-break"></div>
+
+                <h2 id="k1-designer">1.6 MainForm.Designer.cs - UI</h2>
+
+                <h3>UI komponenty</h3>
+                <table>
+                    <tr>
+                        <th>Komponent</th>
+                        <th>Typ</th>
+                        <th>Účel</th>
+                    </tr>
+                    <tr>
+                        <td><code>txtUrl</code></td>
+                        <td>TextBox</td>
+                        <td>URL adresa streamu</td>
+                    </tr>
+                    <tr>
+                        <td><code>btnStart</code></td>
+                        <td>Button</td>
+                        <td>Spustenie capture</td>
+                    </tr>
+                    <tr>
+                        <td><code>btnStop</code></td>
+                        <td>Button</td>
+                        <td>Zastavenie capture</td>
+                    </tr>
+                    <tr>
+                        <td><code>picFrame</code></td>
+                        <td>PictureBox</td>
+                        <td>Zobrazenie frame s ROI obdĺžnikom</td>
+                    </tr>
+                    <tr>
+                        <td><code>picCleaned</code></td>
+                        <td>PictureBox</td>
+                        <td>Zobrazenie vyčisteného výsledku</td>
+                    </tr>
+                    <tr>
+                        <td><code>nudX, nudY</code></td>
+                        <td>NumericUpDown</td>
+                        <td>ROI pozícia (percentá)</td>
+                    </tr>
+                    <tr>
+                        <td><code>nudWidth, nudHeight</code></td>
+                        <td>NumericUpDown</td>
+                        <td>ROI rozmery (percentá)</td>
+                    </tr>
+                    <tr>
+                        <td><code>nudResize</code></td>
+                        <td>NumericUpDown</td>
+                        <td>Zväčšenie ROI (1, 3, 5)</td>
+                    </tr>
+                    <tr>
+                        <td><code>nudBlockSize</code></td>
+                        <td>NumericUpDown</td>
+                        <td>Adaptive threshold blockSize</td>
+                    </tr>
+                    <tr>
+                        <td><code>nudC</code></td>
+                        <td>NumericUpDown</td>
+                        <td>Adaptive threshold C</td>
+                    </tr>
+                    <tr>
+                        <td><code>nudMinArea</code></td>
+                        <td>NumericUpDown</td>
+                        <td>Filter malých komponentov</td>
+                    </tr>
+                    <tr>
+                        <td><code>btnRoi</code></td>
+                        <td>Button</td>
+                        <td>Zobrazenie ROI v OpenCV okne</td>
+                    </tr>
+                    <tr>
+                        <td><code>btnView</code></td>
+                        <td>Button</td>
+                        <td>Zobrazenie zväčšeného ROI</td>
+                    </tr>
+                    <tr>
+                        <td><code>btnDebugContrast</code></td>
+                        <td>Button</td>
+                        <td>Debug CLAHE výstup</td>
+                    </tr>
+                    <tr>
+                        <td><code>btnDebugBinary</code></td>
+                        <td>Button</td>
+                        <td>Debug threshold výstup</td>
+                    </tr>
+                    <tr>
+                        <td><code>btnDebugCleaned</code></td>
+                        <td>Button</td>
+                        <td>Debug finálny výsledok</td>
+                    </tr>
+                </table>
+
+                <h3>Layout</h3>
+                <div class="architecture-diagram">
+┌─────────────────────────────────────────────────┐
+│  [txtUrl: http://192...    ] [START] [STOP]    │
+├────────────────────────┬────────────────────────┤
+│                        │  ┌─ ROI (%) ─────────┐ │
+│                        │  │ X: [0  ]          │ │
+│   picFrame             │  │ Y: [0  ]          │ │
+│   (480×360)            │  │ W: [100]          │ │
+│   Frame + ROI rect     │  │ H: [100]  [ROI]   │ │
+│                        │  └───────────────────┘ │
+│                        │  ┌─ Resize ──────────┐ │
+├────────────────────────┤  │ Factor: [3]       │ │
+│                        │  │         [VIEW]    │ │
+│   picCleaned           │  └───────────────────┘ │
+│   (480×360)            │  ┌─ Pipeline params ─┐ │
+│   Finálny výsledok     │  │ blockSize: [41]   │ │
+│                        │  │ C: [5.0]          │ │
+│                        │  │ minArea: [350]    │ │
+│                        │  └───────────────────┘ │
+│                        │  ┌─ Debug ───────────┐ │
+│                        │  │ [Contrast]        │ │
+│                        │  │ [Binary]          │ │
+│                        │  │ [Cleaned]         │ │
+│                        │  └───────────────────┘ │
+└────────────────────────┴────────────────────────┘
+                </div>
+
+                <div class="success-box">
+                    <h4>Zhrnutie Kapitoly 1</h4>
+                    <p>Pôvodný kód predstavuje robustnú aplikáciu pre real-time video spracovanie s nasledujúcimi kľúčovými vlastnosťami:</p>
+                    <ul>
+                        <li><span class="checkmark">✅</span> Thread-safe architektúra (3 vlákna)</li>
+                        <li><span class="checkmark">✅</span> Asynchrónny logging s rotáciou</li>
+                        <li><span class="checkmark">✅</span> Pokročilý image processing pipeline</li>
+                        <li><span class="checkmark">✅</span> Defenzívne programovanie (null checks, validácia)</li>
+                        <li><span class="checkmark">✅</span> Korektný memory management (Dispose patterns)</li>
+                        <li><span class="checkmark">✅</span> Flexibilné nastavenia (ROI, threshold, filtering)</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="page-break"></div>
+
+            <!-- ============================================ -->
+            <!-- KAPITOLA 2: SETTINGS.JSON IMPLEMENTÁCIA -->
+            <!-- ============================================ -->
+            <div class="chapter" id="kapitola2">
+                <div class="chapter-header">
+                    <h2>Kapitola 2: Settings.json implementácia</h2>
+                    <p>Dynamické načítavanie IP adries zo súboru</p>
+                </div>
+
+                <div class="toc-box">
+                    <h3>📋 Obsah kapitoly</h3>
+                    <ul>
+                        <li><a href="#k2-prehlad">2.1 Prehľad zmien</a></li>
+                        <li><a href="#k2-settings">2.2 Settings.cs - Nový súbor</a></li>
+                        <li><a href="#k2-designer">2.3 MainForm.Designer.cs - Úpravy</a></li>
+                        <li><a href="#k2-mainform">2.4 MainForm.cs - Úpravy</a></li>
+                        <li><a href="#k2-testovanie">2.5 Testovanie</a></li>
+                    </ul>
+                </div>
+
+                <h2 id="k2-prehlad">2.1 Prehľad zmien</h2>
+
+                <div class="info-box">
+                    <h4>Cieľ implementácie</h4>
+                    <p>Implementovať dynamické načítavanie IP adries pre ESP32-CAM stream zo súboru <code>Settings.json</code> namiesto hardcoded URL adresy v kóde.</p>
+                </div>
+
+                <div class="success-box">
+                    <h4>Hlavné zmeny</h4>
+                    <ul>
+                        <li><span class="checkmark">✅</span> Vytvorenie triedy <code>Settings</code> pre JSON serializáciu</li>
+                        <li><span class="checkmark">✅</span> Automatické vytváranie <code>Settings.json</code> pri prvom spustení</li>
+                        <li><span class="checkmark">✅</span> Zmena UI z TextBox na ComboBox (dropdown list)</li>
+                        <li><span class="checkmark">✅</span> Validácia START tlačidla (zakázané ak je list prázdny)</li>
+                        <li><span class="checkmark">✅</span> Odstránenie hardcoded default URL z kódu</li>
+                    </ul>
+                </div>
+
+                <table>
+                    <tr>
+                        <th>Súbor</th>
+                        <th>Typ zmeny</th>
+                        <th>Počet zmien</th>
+                    </tr>
+                    <tr>
+                        <td><code>Settings.cs</code></td>
+                        <td><span class="file-badge new-badge">NOVÝ</span></td>
+                        <td>86 riadkov</td>
+                    </tr>
+                    <tr>
+                        <td><code>MainForm.Designer.cs</code></td>
+                        <td><span class="file-badge modified-badge">UPRAVENÝ</span></td>
+                        <td>4 zmeny</td>
+                    </tr>
+                    <tr>
+                        <td><code>MainForm.cs</code></td>
+                        <td><span class="file-badge modified-badge">UPRAVENÝ</span></td>
+                        <td>11 zmien</td>
+                    </tr>
+                </table>
+
+                <h2 id="k2-settings">2.2 Settings.cs - Nový súbor</h2>
+
+                <div class="file-badge new-badge">NOVÝ SÚBOR</div>
+                <p><strong>Umiestnenie:</strong> <code>C:\Apps\GUIVideoProcessing\Settings.cs</code></p>
+                <p><strong>Riadkov kódu:</strong> 86</p>
+
+                <h3>Účel triedy</h3>
+                <p>Trieda <code>Settings</code> slúži na serializáciu a deserializáciu nastavení aplikácie do/z JSON súboru. Poskytuje:</p>
+                <ul>
+                    <li>Property <code>IPAddress</code> (List&lt;string&gt;) pre ukladanie URL adries</li>
+                    <li>Statickú metódu <code>Load()</code> pre načítanie zo súboru</li>
+                    <li>Metódu <code>Save()</code> pre uloženie do súboru</li>
+                    <li>Automatické vytváranie súboru pri prvom spustení</li>
+                    <li>Fail-safe mechanizmy (ochrana proti null)</li>
+                </ul>
+
+                <h3>Property: IPAddress</h3>
+                <pre><code>public List&lt;string&gt; IPAddress { get; set; }</code></pre>
+                <table>
+                    <tr>
+                        <th>Atribút</th>
+                        <th>Hodnota</th>
+                    </tr>
+                    <tr>
+                        <td>Typ</td>
+                        <td><code>List&lt;string&gt;</code></td>
+                    </tr>
+                    <tr>
+                        <td>Prístup</td>
+                        <td>public get/set</td>
+                    </tr>
+                    <tr>
+                        <td>Príklad</td>
+                        <td><code>["http://192.168.50.96:81/stream", "http://192.168.50.100:81/stream"]</code></td>
+                    </tr>
+                </table>
+
+                <h3>Konštruktor</h3>
+                <div class="method-card">
+                    <h4>Settings()</h4>
+                    <pre><code>public Settings()
+{
+    IPAddress = new List&lt;string&gt;();
+}</code></pre>
+                    <p><strong>Účel:</strong> Inicializuje prázdny list IP adries, zabezpečuje že <code>IPAddress</code> nikdy nie je <code>null</code>.</p>
+                </div>
+
+                <h3>Metóda Load</h3>
+                <div class="method-card">
+                    <h4>public static Settings Load(string filePath)</h4>
+                    <p><strong>Účel:</strong> Načíta nastavenia zo súboru Settings.json</p>
+
+                    <p><strong>Algoritmus:</strong></p>
+                    <ol>
+                        <li>Kontrola existencie súboru
+                            <pre><code>if (!File.Exists(filePath))</code></pre>
+                        </li>
+                        <li><strong>Ak neexistuje:</strong>
+                            <ul>
+                                <li>Vytvorí nový <code>Settings</code> s prázdnym listom</li>
+                                <li>Zavolá <code>Save()</code> → vytvorí súbor na disku</li>
+                                <li>Vráti nový objekt</li>
+                            </ul>
+                        </li>
+                        <li><strong>Ak existuje:</strong>
+                            <ul>
+                                <li>Prečíta obsah: <code>File.ReadAllText(filePath)</code></li>
+                                <li>Deserializuje: <code>JsonSerializer.Deserialize&lt;Settings&gt;(json)</code></li>
+                                <li>Validuje (null checks)</li>
+                                <li>Vráti načítaný objekt</li>
+                            </ul>
+                        </li>
+                    </ol>
+
+                    <div class="warning-box">
+                        <h4>Ochranné mechanizmy</h4>
+                        <pre><code>// Ochrana 1: Deserializácia zlyhala
+if (settings == null)
+{
+    settings = new Settings();
+}
+
+// Ochrana 2: IPAddress property je null
+if (settings.IPAddress == null)
+{
+    settings.IPAddress = new List&lt;string&gt;();
+}</code></pre>
+                        <p>Tieto ochrany zabezpečujú, že aplikácia nikdy nespadne na <code>NullReferenceException</code>, aj keď je JSON súbor poškodený.</p>
+                    </div>
+                </div>
+
+                <h3>Metóda Save</h3>
+                <div class="method-card">
+                    <h4>public void Save(string filePath)</h4>
+                    <p><strong>Účel:</strong> Uloží aktuálne nastavenia do súboru Settings.json</p>
+
+                    <pre><code>public void Save(string filePath)
+{
+    var options = new JsonSerializerOptions
+    {
+        WriteIndented = true  // Pekný formát
+    };
+
+    string json = JsonSerializer.Serialize(this, options);
+    File.WriteAllText(filePath, json);
+}</code></pre>
+
+                    <p><strong>WriteIndented = true:</strong> Vytvára pekne formátovaný JSON</p>
+                    <table>
+                        <tr>
+                            <th>WriteIndented = false</th>
+                            <th>WriteIndented = true</th>
+                        </tr>
+                        <tr>
+                            <td><pre><code>{"IPAddress":["http://192.168.50.96:81/stream","http://192.168.50.100:81/stream"]}</code></pre></td>
+                            <td><pre><code>{
+  "IPAddress": [
+    "http://192.168.50.96:81/stream",
+    "http://192.168.50.100:81/stream"
+  ]
+}</code></pre></td>
+                        </tr>
+                    </table>
+                </div>
+
+                <h3>Príklad použitia</h3>
+                <pre><code>// Načítanie (vytvorí súbor ak neexistuje)
+Settings settings = Settings.Load("Settings.json");
+
+// Pridanie IP adries
+settings.IPAddress.Add("http://192.168.50.96:81/stream");
+settings.IPAddress.Add("http://192.168.50.100:81/stream");
+
+// Uloženie
+settings.Save("Settings.json");</code></pre>
+
+                <div class="page-break"></div>
+
+                <h2 id="k2-designer">2.3 MainForm.Designer.cs - Úpravy</h2>
+
+                <p><strong>Počet zmien:</strong> 4</p>
+
+                <h3>Zmena 1: Deklarácia premennej</h3>
+                <div class="code-section">
+                    <div class="code-header">PRED (riadok 8-9)</div>
+                    <div class="change-before">
+                        <pre><code>// TextBox pre zadanie URL
+private System.Windows.Forms.TextBox txtUrl;</code></pre>
+                    </div>
+                </div>
+
+                <div class="code-section">
+                    <div class="code-header">PO (riadok 8-9)</div>
+                    <div class="change-after">
+                        <pre><code>// ComboBox pre výber URL zo Settings.json
+private System.Windows.Forms.ComboBox cboUrl;</code></pre>
+                    </div>
+                </div>
+
+                <div class="info-box">
+                    <h4>Dôvod zmeny</h4>
+                    <ul>
+                        <li><strong>TextBox:</strong> Umožňuje voľné zadanie textu (manuálne písanie)</li>
+                        <li><strong>ComboBox:</strong> Dropdown list s preddefinovanými položkami</li>
+                        <li><strong>Premenná:</strong> Premenovaná podľa konvencie (<code>txt</code> → <code>cbo</code>)</li>
+                    </ul>
+                </div>
+
+                <h3>Zmena 2: Inicializácia objektu</h3>
+                <div class="code-section">
+                    <div class="code-header">PRED (riadok 82)</div>
+                    <div class="change-before">
+                        <pre><code>this.txtUrl = new System.Windows.Forms.TextBox();</code></pre>
+                    </div>
+                </div>
+
+                <div class="code-section">
+                    <div class="code-header">PO (riadok 82)</div>
+                    <div class="change-after">
+                        <pre><code>this.cboUrl = new System.Windows.Forms.ComboBox();</code></pre>
+                    </div>
+                </div>
+
+                <h3>Zmena 3: Konfigurácia kontrolky</h3>
+                <div class="code-section">
+                    <div class="code-header">PRED (riadok 230-237)</div>
+                    <div class="change-before">
+                        <pre><code>this.txtUrl.Location = new System.Drawing.Point(12, 12);
+this.txtUrl.Name = "txtUrl";
+this.txtUrl.Size = new System.Drawing.Size(480, 23);
+this.txtUrl.TabIndex = 0;</code></pre>
+                    </div>
+                </div>
+
+                <div class="code-section">
+                    <div class="code-header">PO (riadok 230-237)</div>
+                    <div class="change-after">
+                        <pre><code>this.cboUrl.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+this.cboUrl.FormattingEnabled = true;
+this.cboUrl.Location = new System.Drawing.Point(12, 12);
+this.cboUrl.Name = "cboUrl";
+this.cboUrl.Size = new System.Drawing.Size(480, 23);
+this.cboUrl.TabIndex = 0;</code></pre>
+                    </div>
+                </div>
+
+                <h4>Nové properties</h4>
+                <table>
+                    <tr>
+                        <th>Property</th>
+                        <th>Hodnota</th>
+                        <th>Účel</th>
+                    </tr>
+                    <tr>
+                        <td><code>DropDownStyle</code></td>
+                        <td><code>DropDownList</code></td>
+                        <td>Používateľ môže len vyberať (nemôže písať vlastný text)</td>
+                    </tr>
+                    <tr>
+                        <td><code>FormattingEnabled</code></td>
+                        <td><code>true</code></td>
+                        <td>Povolí štandardné formátovanie položiek</td>
+                    </tr>
+                </table>
+
+                <h3>Zmena 4: Pridanie do Controls</h3>
+                <div class="code-section">
+                    <div class="code-header">PRED (riadok 427)</div>
+                    <div class="change-before">
+                        <pre><code>this.Controls.Add(this.txtUrl);</code></pre>
+                    </div>
+                </div>
+
+                <div class="code-section">
+                    <div class="code-header">PO (riadok 427)</div>
+                    <div class="change-after">
+                        <pre><code>this.Controls.Add(this.cboUrl);</code></pre>
+                    </div>
+                </div>
+
+                <div class="page-break"></div>
+
+                <h2 id="k2-mainform">2.4 MainForm.cs - Úpravy</h2>
+
+                <p><strong>Počet zmien:</strong> 11</p>
+
+                <h3>Zmena 1: Pridanie fieldov</h3>
+                <div class="code-section">
+                    <div class="code-header">PRIDANÉ (riadok 15-22)</div>
+                    <div class="change-after">
+                        <pre><code>// Settings objekt – obsahuje list IP adries načítaný zo Settings.json.
+private Settings _settings;
+
+// Cesta k súboru Settings.json – nachádza sa v rovnakom priečinku ako .exe súbor.
+private readonly string _settingsPath =
+    Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Settings.json");</code></pre>
+                    </div>
+                </div>
+
+                <table>
+                    <tr>
+                        <th>Field</th>
+                        <th>Typ</th>
+                        <th>Účel</th>
+                    </tr>
+                    <tr>
+                        <td><code>_settings</code></td>
+                        <td>Settings</td>
+                        <td>Obsahuje načítané IP adresy</td>
+                    </tr>
+                    <tr>
+                        <td><code>_settingsPath</code></td>
+                        <td>string (readonly)</td>
+                        <td>Plná cesta k Settings.json</td>
+                    </tr>
+                </table>
+
+                <h3>Zmena 2: Načítanie Settings v konštruktore</h3>
+                <div class="code-section">
+                    <div class="code-header">PRIDANÉ DO KONŠTRUKTORA (riadok 75-94)</div>
+                    <div class="change-after">
+                        <pre><code>// ========================= NAČÍTANIE SETTINGS.JSON =========================
+_settings = Settings.Load(_settingsPath);
+
+// Naplní ComboBox (cboUrl) IP adresami zo Settings.
+cboUrl.Items.AddRange(_settings.IPAddress.ToArray());
+
+// Ak ComboBox obsahuje aspoň jednu položku, vyber prvú ako predvolenú.
+if (cboUrl.Items.Count > 0)
+{
+    cboUrl.SelectedIndex = 0;
+}
+
+// Pripojí event handler pre zmenu výberu v ComboBoxe.
+cboUrl.SelectedIndexChanged += CboUrl_SelectedIndexChanged;</code></pre>
+                    </div>
+                </div>
+
+                <p><strong>Vysvetlenie krokov:</strong></p>
+                <ol>
+                    <li><code>Settings.Load()</code> načíta JSON (alebo vytvorí nový ak neexistuje)</li>
+                    <li><code>AddRange()</code> pridá všetky IP adresy do ComboBoxu naraz</li>
+                    <li>Ak je aspoň jedna položka → vyberie prvú (<code>SelectedIndex = 0</code>)</li>
+                    <li>Pripojí event handler pre zmenu výberu</li>
+                </ol>
+
+                <h3>Zmena 3: Odstránenie hardcoded URL</h3>
+                <div class="code-section">
+                    <div class="code-header">PRED</div>
+                    <div class="change-before">
+                        <pre><code>// Predvyplní textové pole URL defaultnou adresou streamu
+txtUrl.Text = "http://192.168.50.96:81/stream";</code></pre>
+                    </div>
+                </div>
+
+                <div class="code-section">
+                    <div class="code-header">PO</div>
+                    <div class="change-after">
+                        <pre><code>// (odstránené - URL sa teraz načítava zo Settings.json)</code></pre>
+                    </div>
+                </div>
+
+                <h3>Zmena 4: Validácia START tlačidla</h3>
+                <div class="code-section">
+                    <div class="code-header">PRIDANÉ (riadok 133-136)</div>
+                    <div class="change-after">
+                        <pre><code>// Validácia START tlačidla – ak je ComboBox prázdny, zakáž START.
+ValidateStartButton();</code></pre>
+                    </div>
+                </div>
+
+                <h3>Zmena 5: Event handler CboUrl_SelectedIndexChanged</h3>
+                <div class="method-card">
+                    <h4>NOVÁ METÓDA (riadok 440-450)</h4>
+                    <pre><code>private void CboUrl_SelectedIndexChanged(object sender, EventArgs e)
+{
+    ValidateStartButton();
+}</code></pre>
+                    <p><strong>Kedy sa volá:</strong> Automaticky pri zmene výberu v ComboBoxe</p>
+                    <p><strong>Čo robí:</strong> Zavolá validáciu START tlačidla</p>
+                </div>
+
+                <h3>Zmena 6: Metóda ValidateStartButton</h3>
+                <div class="method-card">
+                    <h4>NOVÁ METÓDA (riadok 452-471)</h4>
+                    <pre><code>private void ValidateStartButton()
+{
+    bool canStart = cboUrl.Items.Count > 0 &&
+                    cboUrl.SelectedIndex >= 0 &&
+                    !_running;
+    btnStart.Enabled = canStart;
+}</code></pre>
+
+                    <h4>Podmienky pre povolenie START</h4>
+                    <table>
+                        <tr>
+                            <th>Podmienka</th>
+                            <th>Význam</th>
+                        </tr>
+                        <tr>
+                            <td><code>cboUrl.Items.Count > 0</code></td>
+                            <td>ComboBox obsahuje aspoň jednu IP adresu</td>
+                        </tr>
+                        <tr>
+                            <td><code>cboUrl.SelectedIndex >= 0</code></td>
+                            <td>Niečo je vybrané (-1 = nič nevybrané)</td>
+                        </tr>
+                        <tr>
+                            <td><code>!_running</code></td>
+                            <td>Stream momentálne nebeží</td>
+                        </tr>
+                    </table>
+
+                    <h4>Logická tabuľka</h4>
+                    <table>
+                        <tr>
+                            <th>Items.Count</th>
+                            <th>SelectedIndex</th>
+                            <th>_running</th>
+                            <th>Výsledok</th>
+                        </tr>
+                        <tr style="background: #ffebee;">
+                            <td>0</td>
+                            <td>-1</td>
+                            <td>false</td>
+                            <td><strong>FALSE</strong> (prázdny list)</td>
+                        </tr>
+                        <tr style="background: #ffebee;">
+                            <td>2</td>
+                            <td>-1</td>
+                            <td>false</td>
+                            <td><strong>FALSE</strong> (nič nevybrané)</td>
+                        </tr>
+                        <tr style="background: #e8f5e9;">
+                            <td>2</td>
+                            <td>0</td>
+                            <td>false</td>
+                            <td><strong>TRUE</strong> (všetko OK)</td>
+                        </tr>
+                        <tr style="background: #ffebee;">
+                            <td>2</td>
+                            <td>0</td>
+                            <td>true</td>
+                            <td><strong>FALSE</strong> (stream beží)</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <h3>Zmena 7: Thread-safe čítanie URL</h3>
+                <div class="code-section">
+                    <div class="code-header">PRED (riadok 514-515)</div>
+                    <div class="change-before">
+                        <pre><code>_cap = new VideoCapture(txtUrl.Text);
+_logger.Info($"Opening stream: {txtUrl.Text}");</code></pre>
+                    </div>
+                </div>
+
+                <div class="code-section">
+                    <div class="code-header">PO (riadok 578-594)</div>
+                    <div class="change-after">
+                        <pre><code>// Prečíta vybranú URL adresu z ComboBoxu thread-safe spôsobom.
+string selectedUrl = (string)Invoke(new Func&lt;string&gt;(() =>
+{
+    return cboUrl.SelectedItem?.ToString() ?? "";
+}));
+
+_cap = new VideoCapture(selectedUrl);
+_logger.Info($"Opening stream: {selectedUrl}");</code></pre>
+                    </div>
+                </div>
+
+                <div class="danger-box">
+                    <h4>Prečo Invoke()?</h4>
+                    <table>
+                        <tr>
+                            <th>Problém</th>
+                            <th>Riešenie</th>
+                        </tr>
+                        <tr>
+                            <td>CaptureLoop beží na <strong>background threade</strong></td>
+                            <td>Invoke() zabezpečí volanie na <strong>UI threade</strong></td>
+                        </tr>
+                        <tr>
+                            <td>Priamy prístup k UI = <strong>CrossThreadException</strong></td>
+                            <td>Thread-safe prístup cez Invoke()</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <h3>Zmena 8: Validácia po zastavení</h3>
+                <div class="code-section">
+                    <div class="code-header">PRED</div>
+                    <div class="change-before">
+                        <pre><code>Invoke(new Action(() =>
+{
+    btnStart.Enabled = true;  // Vždy povolí
+    btnStop.Enabled = false;
+}));</code></pre>
+                    </div>
+                </div>
+
+                <div class="code-section">
+                    <div class="code-header">PO</div>
+                    <div class="change-after">
+                        <pre><code>Invoke(new Action(() =>
+{
+    btnStop.Enabled = false;
+    ValidateStartButton();  // Povolí len ak je niečo v ComboBoxe
+}));</code></pre>
+                    </div>
+                </div>
+
+                <div class="page-break"></div>
+
+                <h2 id="k2-testovanie">2.5 Testovanie</h2>
+
+                <h3>Test 1: Prvé spustenie (prázdny Settings.json)</h3>
+                <div class="info-box">
+                    <h4>Kroky</h4>
+                    <ol>
+                        <li>Zmaž <code>Settings.json</code> (ak existuje)</li>
+                        <li>Spusti aplikáciu</li>
+                    </ol>
+                </div>
+
+                <div class="success-box">
+                    <h4>Očakávaný výsledok</h4>
+                    <ul>
+                        <li><span class="checkmark">✅</span> Vytvorí sa <code>Settings.json</code> s prázdnym listom</li>
+                        <li><span class="checkmark">✅</span> ComboBox je prázdny (žiadne položky)</li>
+                        <li><span class="checkmark">✅</span> START je <strong>zakázaný</strong> (sivé)</li>
+                        <li><span class="checkmark">✅</span> STOP je zakázaný</li>
+                    </ul>
+                </div>
+
+                <pre><code>{
+  "IPAddress": []
+}</code></pre>
+
+                <h3>Test 2: Pridanie IP adries</h3>
+                <div class="info-box">
+                    <h4>Kroky</h4>
+                    <ol>
+                        <li>Zatvor aplikáciu</li>
+                        <li>Uprav Settings.json:</li>
+                    </ol>
+                </div>
+
+                <pre><code>{
+  "IPAddress": [
+    "http://192.168.50.96:81/stream",
+    "http://192.168.50.100:81/stream"
+  ]
+}</code></pre>
+
+                <ol start="3">
+                    <li>Spusti aplikáciu</li>
+                </ol>
+
+                <div class="success-box">
+                    <h4>Očakávaný výsledok</h4>
+                    <ul>
+                        <li><span class="checkmark">✅</span> ComboBox obsahuje 2 položky</li>
+                        <li><span class="checkmark">✅</span> Prvá položka je <strong>automaticky vybraná</strong></li>
+                        <li><span class="checkmark">✅</span> START je <strong>povolený</strong></li>
+                        <li><span class="checkmark">✅</span> Dropdown zobrazuje obe adresy</li>
+                    </ul>
+                </div>
+
+                <h3>Test 3: Spustenie streamu</h3>
+                <div class="info-box">
+                    <h4>Kroky</h4>
+                    <ol>
+                        <li>Vyber IP adresu v ComboBoxe</li>
+                        <li>Klikni na START</li>
+                    </ol>
+                </div>
+
+                <div class="success-box">
+                    <h4>Očakávaný výsledok</h4>
+                    <ul>
+                        <li><span class="checkmark">✅</span> CaptureLoop použije <strong>vybranú IP</strong></li>
+                        <li><span class="checkmark">✅</span> Log: <code>"Opening stream: http://192.168.50.96:81/stream"</code></li>
+                        <li><span class="checkmark">✅</span> VideoCapture sa pripojí na správnu URL</li>
+                        <li><span class="checkmark">✅</span> START sa zakáže, STOP sa povolí</li>
+                    </ul>
+                </div>
+
+                <h3>Príklady použitia</h3>
+
+                <h4>Príklad 1: Jednoduchá konfigurácia (1 stream)</h4>
+                <pre><code>{
+  "IPAddress": [
+    "http://192.168.50.96:81/stream"
+  ]
+}</code></pre>
+                <p><strong>Výsledok:</strong> ComboBox obsahuje 1 položku, automaticky vybraná, START povolený</p>
+
+                <h4>Príklad 2: Viacero streamov</h4>
+                <pre><code>{
+  "IPAddress": [
+    "http://192.168.50.96:81/stream",
+    "http://192.168.50.100:81/stream",
+    "http://192.168.50.150:81/stream"
+  ]
+}</code></pre>
+                <p><strong>Výsledok:</strong> ComboBox obsahuje 3 položky, prvá predvolená, možnosť prepínania</p>
+
+                <h4>Príklad 3: Prázdna konfigurácia</h4>
+                <pre><code>{
+  "IPAddress": []
+}</code></pre>
+                <p><strong>Výsledok:</strong> ComboBox prázdny, START <strong>zakázaný</strong>, bezpečné správanie</p>
+
+                <div class="success-box">
+                    <h4>Zhrnutie Kapitoly 2</h4>
+                    <p>Implementácia Settings.json prináša:</p>
+                    <ul>
+                        <li><span class="checkmark">✅</span> Žiadne hardcoded hodnoty v kóde</li>
+                        <li><span class="checkmark">✅</span> Flexibilná konfigurácia (jednoduchá zmena IP)</li>
+                        <li><span class="checkmark">✅</span> Thread-safe implementácia</li>
+                        <li><span class="checkmark">✅</span> Fail-safe prístup (aplikácia nespadne)</li>
+                        <li><span class="checkmark">✅</span> Automatické vytváranie konfigurácie</li>
+                        <li><span class="checkmark">✅</span> Pekný JSON formát (ľudsky čitateľný)</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="page-break"></div>
+
+            <!-- ============================================ -->
+            <!-- KAPITOLA 3: CHANGEMATRIX IMPLEMENTÁCIA -->
+            <!-- ============================================ -->
+            <div class="chapter" id="kapitola3">
+                <div class="chapter-header">
+                    <h2>Kapitola 3: ChangeMatrix implementácia</h2>
+                    <p>Resize cleaned Mat na fixnú veľkosť NxN (16×16, 32×32, 64×64, 128×128)</p>
+                </div>
+
+                <div class="toc-box">
+                    <h3>📋 Obsah kapitoly</h3>
+                    <ul>
+                        <li><a href="#k3-prehlad">3.1 Prehľad zmien</a></li>
+                        <li><a href="#k3-designer">3.2 MainForm.Designer.cs - UI komponenty</a></li>
+                        <li><a href="#k3-mainform">3.3 MainForm.cs - Logika</a></li>
+                        <li><a href="#k3-testovanie">3.4 Testovanie</a></li>
+                    </ul>
+                </div>
+
+                <h2 id="k3-prehlad">3.1 Prehľad zmien</h2>
+
+                <div class="info-box">
+                    <h4>Cieľ implementácie</h4>
+                    <p>Pridať nový stupeň do image processing pipeline, ktorý vezme finálny <code>cleaned</code> Mat a zmenší ho na fixnú veľkosť NxN pixelov. Veľkosť je nastaviteľná cez UI ComboBox (16, 32, 64, 128). Výsledok je pripravený na použitie v neurónových sieťach alebo pattern matching algoritmoch.</p>
+                </div>
+
+                <div class="success-box">
+                    <h4>Hlavné zmeny</h4>
+                    <ul>
+                        <li><span class="checkmark">✅</span> Pridanie UI GroupBox "ChangeMatrix" s ComboBoxom a PictureBoxom</li>
+                        <li><span class="checkmark">✅</span> Nový field <code>_lastMatrix</code> (Mat) pre uloženie resized výsledku</li>
+                        <li><span class="checkmark">✅</span> Rozšírenie Pipeline() - krok 9 (ChangeMatrix)</li>
+                        <li><span class="checkmark">✅</span> Helper metóda <code>GetComboValueSafe()</code> pre thread-safe čítanie</li>
+                        <li><span class="checkmark">✅</span> CaptureLoop() - zobrazenie picMatrix</li>
+                        <li><span class="checkmark">✅</span> StopCapture() - korektné uvoľnenie zdrojov</li>
+                        <li><span class="checkmark">✅</span> Thread-safe implementácia (rovnako ako všetky ostatné kroky)</li>
+                    </ul>
+                </div>
+
+                <table>
+                    <tr>
+                        <th>Súbor</th>
+                        <th>Typ zmeny</th>
+                        <th>Počet zmien</th>
+                    </tr>
+                    <tr>
+                        <td><code>MainForm.Designer.cs</code></td>
+                        <td><span class="file-badge modified-badge">UPRAVENÝ</span></td>
+                        <td>Pridané 3 kontrolky + konfigurácia (60+ riadkov)</td>
+                    </tr>
+                    <tr>
+                        <td><code>MainForm.cs</code></td>
+                        <td><span class="file-badge modified-badge">UPRAVENÝ</span></td>
+                        <td>6 zmien (field, konštruktor, Pipeline, helper, CaptureLoop, StopCapture)</td>
+                    </tr>
+                </table>
+
+                <h3>Pipeline rozšírenie - nový krok 9</h3>
+                <div class="architecture-diagram">
+Pôvodný pipeline (Kapitola 1):
+_lastUp → gray → smooth → contrast → smoothGaussian → binary → cleaned → _lastCleaned
+
+Nový pipeline (Kapitola 3):
+_lastUp → gray → smooth → contrast → smoothGaussian → binary → cleaned → _lastCleaned
+                                                                              ↓
+                                                                         [NOVÝ KROK 9]
+                                                                         ChangeMatrix
+                                                                         Resize(NxN)
+                                                                              ↓
+                                                                         _lastMatrix
+                                                                         (16x16, 32x32,
+                                                                          64x64, 128x128)
+                </div>
+
+                <div class="page-break"></div>
+
+                <h2 id="k3-designer">3.2 MainForm.Designer.cs - UI komponenty</h2>
+
+                <h3>Zmena 1: Deklarácie nových kontroliek (riadok 53-60)</h3>
+
+                <div class="code-section">
+                    <div class="code-header">PRIDANÉ</div>
+                    <div class="change-after">
+                        <pre><code>// GroupBox pre ChangeMatrix (resize cleaned na NxN)
+private System.Windows.Forms.GroupBox grpChangeMatrix;
+// Label pre ChangeMatrix
+private System.Windows.Forms.Label lblChangeMatrix;
+// ComboBox pre výber veľkosti matice (16, 32, 64, 128)
+private System.Windows.Forms.ComboBox cboChangeMatrix;
+// PictureBox pre zobrazenie resized matice
+private System.Windows.Forms.PictureBox picMatrix;</code></pre>
+                    </div>
+                </div>
+
+                <p><strong>Vysvetlenie:</strong></p>
+                <ul>
+                    <li><code>grpChangeMatrix</code>: GroupBox kontajner pre label a ComboBox</li>
+                    <li><code>lblChangeMatrix</code>: Label "Matrix size:" zobrazený v GroupBoxe</li>
+                    <li><code>cboChangeMatrix</code>: Dropdown list s možnosťami 16, 32, 64, 128</li>
+                    <li><code>picMatrix</code>: PictureBox pre zobrazenie resized matice (16x16 až 128x128)</li>
+                </ul>
+
+                <h3>Zmena 2: Inicializácia objektov (riadok 109-113)</h3>
+
+                <div class="code-section">
+                    <div class="code-header">PRIDANÉ do InitializeComponent()</div>
+                    <div class="change-after">
+                        <pre><code>// Inicializácia nových kontroliek pre ChangeMatrix
+this.grpChangeMatrix = new System.Windows.Forms.GroupBox();
+this.lblChangeMatrix = new System.Windows.Forms.Label();
+this.cboChangeMatrix = new System.Windows.Forms.ComboBox();
+this.picMatrix = new System.Windows.Forms.PictureBox();</code></pre>
+                    </div>
+                </div>
+
+                <p><strong>Vysvetlenie:</strong> Vytvorenie inštancií nových kontroliek, aby boli k dispozícii pre konfiguráciu</p>
+
+                <h3>Zmena 3: Konfigurácia grpChangeMatrix (riadok 432-446)</h3>
+
+                <div class="code-section">
+                    <div class="code-header">PRIDANÉ</div>
+                    <div class="change-after">
+                        <pre><code>//
+// grpChangeMatrix
+//
+// GroupBox pre ChangeMatrix - obsahuje ComboBox pre výber veľkosti matice a label
+this.grpChangeMatrix.Controls.Add(this.lblChangeMatrix);
+this.grpChangeMatrix.Controls.Add(this.cboChangeMatrix);
+// Umiestnenie: vpravo, pod grpDebug (predpokladám pozíciu 498, 620)
+this.grpChangeMatrix.Location = new System.Drawing.Point(498, 620);
+this.grpChangeMatrix.Name = "grpChangeMatrix";
+// Veľkosť GroupBoxu (šírka 200, výška 80)
+this.grpChangeMatrix.Size = new System.Drawing.Size(200, 80);
+this.grpChangeMatrix.TabIndex = 9;
+this.grpChangeMatrix.TabStop = false;
+// Text zobrazený v GroupBoxu
+this.grpChangeMatrix.Text = "ChangeMatrix";</code></pre>
+                    </div>
+                </div>
+
+                <table>
+                    <tr>
+                        <th>Property</th>
+                        <th>Hodnota</th>
+                        <th>Účel</th>
+                    </tr>
+                    <tr>
+                        <td><code>Controls</code></td>
+                        <td>lblChangeMatrix, cboChangeMatrix</td>
+                        <td>Pridanie detských kontroliek do GroupBoxu</td>
+                    </tr>
+                    <tr>
+                        <td><code>Location</code></td>
+                        <td>(498, 620)</td>
+                        <td>Pozícia na formulári - vpravo, pod grpDebug</td>
+                    </tr>
+                    <tr>
+                        <td><code>Size</code></td>
+                        <td>200×80</td>
+                        <td>Rozmer GroupBoxu (šírka × výška v pixeloch)</td>
+                    </tr>
+                    <tr>
+                        <td><code>Text</code></td>
+                        <td>"ChangeMatrix"</td>
+                        <td>Nápis zobrazený v rámčeku GroupBoxu</td>
+                    </tr>
+                </table>
+
+                <h3>Zmena 4: Konfigurácia lblChangeMatrix (riadok 447-456)</h3>
+
+                <div class="code-section">
+                    <div class="code-header">PRIDANÉ</div>
+                    <div class="change-after">
+                        <pre><code>//
+// lblChangeMatrix
+//
+// Label "Matrix size:" v GroupBoxe
+this.lblChangeMatrix.AutoSize = true;
+this.lblChangeMatrix.Location = new System.Drawing.Point(12, 28);
+this.lblChangeMatrix.Name = "lblChangeMatrix";
+this.lblChangeMatrix.Size = new System.Drawing.Size(70, 15);
+this.lblChangeMatrix.TabIndex = 0;
+this.lblChangeMatrix.Text = "Matrix size:";</code></pre>
+                    </div>
+                </div>
+
+                <p><strong>Vysvetlenie:</strong></p>
+                <ul>
+                    <li><code>AutoSize = true</code>: Label sa automaticky prispôsobí veľkosti textu</li>
+                    <li><code>Location</code>: Relatívna pozícia v rámci GroupBoxu (12 px od ľavého okraja, 28 px od horného)</li>
+                    <li><code>Text</code>: Zobrazený nápis "Matrix size:"</li>
+                </ul>
+
+                <h3>Zmena 5: Konfigurácia cboChangeMatrix (riadok 457-469)</h3>
+
+                <div class="code-section">
+                    <div class="code-header">PRIDANÉ</div>
+                    <div class="change-after">
+                        <pre><code>//
+// cboChangeMatrix
+//
+// ComboBox pre výber veľkosti matice (16, 32, 64, 128)
+// DropDownStyle = DropDownList znamená že používateľ môže len vyberať, nie písať
+this.cboChangeMatrix.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+this.cboChangeMatrix.FormattingEnabled = true;
+// Pridáme položky 16, 32, 64, 128
+this.cboChangeMatrix.Items.AddRange(new object[] { 16, 32, 64, 128 });
+this.cboChangeMatrix.Location = new System.Drawing.Point(100, 26);
+this.cboChangeMatrix.Name = "cboChangeMatrix";
+this.cboChangeMatrix.Size = new System.Drawing.Size(80, 23);
+this.cboChangeMatrix.TabIndex = 1;</code></pre>
+                    </div>
+                </div>
+
+                <table>
+                    <tr>
+                        <th>Property</th>
+                        <th>Hodnota</th>
+                        <th>Účel</th>
+                    </tr>
+                    <tr>
+                        <td><code>DropDownStyle</code></td>
+                        <td><code>DropDownList</code></td>
+                        <td>Používateľ môže len vyberať z položiek (nemôže písať vlastné hodnoty)</td>
+                    </tr>
+                    <tr>
+                        <td><code>Items</code></td>
+                        <td><code>{16, 32, 64, 128}</code></td>
+                        <td>Preddefinované veľkosti matice (v pixeloch)</td>
+                    </tr>
+                    <tr>
+                        <td><code>Location</code></td>
+                        <td>(100, 26)</td>
+                        <td>Pozícia v GroupBoxe (vedľa labelu)</td>
+                    </tr>
+                    <tr>
+                        <td><code>Size</code></td>
+                        <td>80×23</td>
+                        <td>Rozmer ComboBoxu</td>
+                    </tr>
+                </table>
+
+                <div class="warning-box">
+                    <h4>Prečo práve tieto veľkosti?</h4>
+                    <ul>
+                        <li><strong>16×16:</strong> Veľmi malá, vhodná pre rýchle porovnávanie vzoriek</li>
+                        <li><strong>32×32:</strong> Bežná veľkosť pre jednoduchie neurónové siete (MNIST-like)</li>
+                        <li><strong>64×64:</strong> Stredná veľkosť, viac detailov</li>
+                        <li><strong>128×128:</strong> Vysoké rozlíšenie, maximum detailov</li>
+                    </ul>
+                    <p>Všetky sú mocniny 2 (optimalizované pre GPU a neurónové siete)</p>
+                </div>
+
+                <h3>Zmena 6: Konfigurácia picMatrix (riadok 470-482)</h3>
+
+                <div class="code-section">
+                    <div class="code-header">PRIDANÉ</div>
+                    <div class="change-after">
+                        <pre><code>//
+// picMatrix
+//
+// PictureBox pre zobrazenie resized matice (16x16, 32x32, 64x64, 128x128)
+// Umiestnenie: vpravo dole (vedľa picCleaned alebo pod ním)
+this.picMatrix.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+this.picMatrix.Location = new System.Drawing.Point(498, 710);
+this.picMatrix.Name = "picMatrix";
+// Veľkosť PictureBoxu (napr. 200x200 pre zobrazenie malej matice)
+this.picMatrix.Size = new System.Drawing.Size(200, 200);
+this.picMatrix.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
+this.picMatrix.TabIndex = 10;
+this.picMatrix.TabStop = false;</code></pre>
+                    </div>
+                </div>
+
+                <table>
+                    <tr>
+                        <th>Property</th>
+                        <th>Hodnota</th>
+                        <th>Účel</th>
+                    </tr>
+                    <tr>
+                        <td><code>BorderStyle</code></td>
+                        <td><code>FixedSingle</code></td>
+                        <td>Zobrazí jednoduchý rámček okolo PictureBoxu</td>
+                    </tr>
+                    <tr>
+                        <td><code>Location</code></td>
+                        <td>(498, 710)</td>
+                        <td>Pozícia na formulári - vpravo dole, pod grpChangeMatrix</td>
+                    </tr>
+                    <tr>
+                        <td><code>Size</code></td>
+                        <td>200×200</td>
+                        <td>Rozmer PictureBoxu (obrázok sa zväčší/zmenší podľa SizeMode)</td>
+                    </tr>
+                    <tr>
+                        <td><code>SizeMode</code></td>
+                        <td><code>Zoom</code></td>
+                        <td>Obrázok sa proporcionálne zväčší/zmenší aby sa zmestil (zachová aspect ratio)</td>
+                    </tr>
+                </table>
+
+                <div class="info-box">
+                    <h4>Prečo SizeMode = Zoom?</h4>
+                    <p>Matica môže byť napr. 16×16 pixelov (veľmi malá). PictureBox je 200×200 pixelov. <code>Zoom</code> režim zväčší malý obrázok proporcionálne, takže sa dobre vidí. Bez toho by 16×16 matica bola sotva viditeľná.</p>
+                </div>
+
+                <h3>Zmena 7: Pridanie kontroliek na formulár (riadok 497-499)</h3>
+
+                <div class="code-section">
+                    <div class="code-header">PRED</div>
+                    <div class="change-before">
+                        <pre><code>this.ClientSize = new System.Drawing.Size(710, 785);
+this.Controls.Add(this.grpResize);
+// ... ostatné kontrolky
+this.Controls.Add(this.grpDebug);</code></pre>
+                    </div>
+                </div>
+
+                <div class="code-section">
+                    <div class="code-header">PO</div>
+                    <div class="change-after">
+                        <pre><code>// Zväčšenie výšky okna na 920 px aby sa zmestili nové kontrolky (ChangeMatrix + picMatrix)
+this.ClientSize = new System.Drawing.Size(710, 920);
+this.Controls.Add(this.grpResize);
+// ... ostatné kontrolky
+this.Controls.Add(this.grpDebug);
+// Pridanie nových kontroliek na formulár
+this.Controls.Add(this.grpChangeMatrix);
+this.Controls.Add(this.picMatrix);</code></pre>
+                    </div>
+                </div>
+
+                <p><strong>Vysvetlenie:</strong></p>
+                <ul>
+                    <li><code>ClientSize</code>: Zväčšenie výšky okna z <strong>785 → 920 px</strong> (pridané +135 px pre nové kontrolky)</li>
+                    <li><code>Controls.Add()</code>: Pridanie nových kontroliek do kolekcie formulára (bez toho by sa nezobrazili)</li>
+                </ul>
+
+                <h3>Zmena 8: SuspendLayout/ResumeLayout (riadok 517-541)</h3>
+
+                <div class="code-section">
+                    <div class="code-header">PRIDANÉ</div>
+                    <div class="change-after">
+                        <pre><code>// SuspendLayout pre nové kontrolky (grpChangeMatrix, picMatrix)
+this.grpChangeMatrix.SuspendLayout();
+((System.ComponentModel.ISupportInitialize)(this.picMatrix)).BeginInit();
+this.SuspendLayout();
+
+// ... všetky ostatné kontrolky ...
+
+// ResumeLayout pre nové kontrolky (grpChangeMatrix, picMatrix)
+this.grpChangeMatrix.ResumeLayout(false);
+this.grpChangeMatrix.PerformLayout();
+((System.ComponentModel.ISupportInitialize)(this.picMatrix)).EndInit();
+this.ResumeLayout(false);</code></pre>
+                    </div>
+                </div>
+
+                <p><strong>Vysvetlenie:</strong></p>
+                <ul>
+                    <li><code>SuspendLayout()</code>: Pozastaví automatické prepočítavanie layoutu počas inicializácie (výkon)</li>
+                    <li><code>BeginInit()</code>: Začiatok inicializácie PictureBoxu (ISupportInitialize interface)</li>
+                    <li><code>ResumeLayout()</code>: Obnoví automatické prepočítavanie layoutu</li>
+                    <li><code>PerformLayout()</code>: Vykoná finálny layout (rozmiestnenie kontroliek)</li>
+                    <li><code>EndInit()</code>: Koniec inicializácie PictureBoxu</li>
+                </ul>
+
+                <div class="page-break"></div>
+
+                <h2 id="k3-mainform">3.3 MainForm.cs - Logika</h2>
+
+                <h3>Zmena 1: Pridanie fieldu _lastMatrix (riadok 69-71)</h3>
+
+                <div class="code-section">
+                    <div class="code-header">PRIDANÉ</div>
+                    <div class="change-after">
+                        <pre><code>// Posledná "matrix" – resized verzia cleaned na NxN (16x16, 32x32, 64x64, 128x128).
+// Používa sa na prípravu vstupu pre neurónové siete alebo ďalšie spracovanie.
+private Mat? _lastMatrix;</code></pre>
+                    </div>
+                </div>
+
+                <p><strong>Vysvetlenie:</strong></p>
+                <ul>
+                    <li><code>Mat?</code>: Nullable Mat typ (môže byť null)</li>
+                    <li><strong>Účel:</strong> Uchováva posledný resized Mat (16×16 až 128×128)</li>
+                    <li><strong>Thread-safety:</strong> Prístup chránený cez <code>_roiLock</code> (rovnako ako ostatné Mat objekty)</li>
+                    <li><strong>Memory management:</strong> Musí sa manuálne uvoľniť cez <code>Dispose()</code></li>
+                </ul>
+
+                <h3>Zmena 2: Inicializácia cboChangeMatrix v konštruktore (riadok 137-143)</h3>
+
+                <div class="code-section">
+                    <div class="code-header">PRIDANÉ do MainForm()</div>
+                    <div class="change-after">
+                        <pre><code>// Inicializácia ComboBoxu pre ChangeMatrix - nastaví default hodnotu na 32x32
+// Položky (16, 32, 64, 128) sú už pridané v Designer.cs cez Items.AddRange()
+// Vyberieme druhú položku (index 1) = 32
+if (cboChangeMatrix.Items.Count > 0)
+{
+    cboChangeMatrix.SelectedIndex = 1; // 32 (index: 0=16, 1=32, 2=64, 3=128)
+}</code></pre>
+                    </div>
+                </div>
+
+                <p><strong>Vysvetlenie:</strong></p>
+                <table>
+                    <tr>
+                        <th>Index</th>
+                        <th>Hodnota</th>
+                        <th>Význam</th>
+                    </tr>
+                    <tr>
+                        <td>0</td>
+                        <td>16</td>
+                        <td>Veľmi malá matica</td>
+                    </tr>
+                    <tr style="background: #e8f5e9;">
+                        <td>1</td>
+                        <td>32</td>
+                        <td><strong>DEFAULT</strong> - optimálny pomer detailov/veľkosti</td>
+                    </tr>
+                    <tr>
+                        <td>2</td>
+                        <td>64</td>
+                        <td>Stredná matica</td>
+                    </tr>
+                    <tr>
+                        <td>3</td>
+                        <td>128</td>
+                        <td>Veľká matica</td>
+                    </tr>
+                </table>
+
+                <div class="info-box">
+                    <p><strong>Prečo 32 ako default?</strong></p>
+                    <ul>
+                        <li>Bežná veľkosť pre jednoduché OCR/pattern recognition</li>
+                        <li>Dobrý kompromis medzi rýchlosťou a kvalitou</li>
+                        <li>Kompatibilné s väčšinou neurónových sietí</li>
+                    </ul>
+                </div>
+
+                <div class="page-break"></div>
+
+                <h3>Zmena 3: Rozšírenie Pipeline() - krok 9 (riadok 1145-1183)</h3>
+
+                <div class="code-section">
+                    <div class="code-header">PRIDANÉ do Pipeline() po kroku 8</div>
+                    <div class="change-after">
+                        <pre><code>// ========================= 9) NOVÝ KROK: ChangeMatrix - Resize cleaned na NxN =========================
+// Tento krok vezme cleaned Mat a zmenší ho na fixnú veľkosť NxN (16x16, 32x32, 64x64 alebo 128x128).
+// Účel: Príprava vstupu pre neurónové siete alebo pattern matching (normalizovaná veľkosť).
+
+// Prečítaj vybranú veľkosť matice z ComboBoxu (thread-safe).
+// GetComboValueSafe() volá Invoke() pre bezpečný prístup z background threadu.
+int matrixSize = GetComboValueSafe(cboChangeMatrix);
+
+// Ochrana: ak je matrixSize <= 0 (chyba alebo nič nevybrané), preskočíme resize.
+// Toto by sa nemalo stať, lebo v konštruktore nastavujeme default hodnotu 32.
+if (matrixSize > 0)
+{
+    // Vytvoríme dočasný Mat pre resized výsledok.
+    Mat matrix = new Mat();
+
+    // Resize cleaned Mat na NxN pixelov.
+    // - cleaned: vstupný Mat (čierne pozadie, biele objekty)
+    // - matrix: výstupný Mat (resized)
+    // - new Size(matrixSize, matrixSize): cieľová veľkosť (napr. 32x32)
+    // - InterpolationFlags.Area: najlepšia interpolácia pre zmenšovanie (zachováva detaily)
+    Cv2.Resize(cleaned, matrix, new OpenCvSharp.Size(matrixSize, matrixSize), 0, 0, InterpolationFlags.Area);
+
+    // Uloženie resized matice do _lastMatrix (thread-safe pod _roiLock).
+    lock (_roiLock)
+    {
+        // Uvoľni starý _lastMatrix (ak existuje) aby nevznikol memory leak.
+        _lastMatrix?.Dispose();
+
+        // Ulož nový resized Mat do _lastMatrix.
+        // Matrix už má vlastnú pamäť (nie je SubMat), takže nepotrebujeme Clone().
+        _lastMatrix = matrix;
+
+        // Nastavíme matrix na null, aby ho finally blok náhodou neDispose-nul.
+        // (matrix teraz vlastní _lastMatrix)
+        matrix = null;
+    }
+
+    // Poznámka: matrix?.Dispose() v finally bloku uvoľní matrix len ak nebol priradený do _lastMatrix.
+}</code></pre>
+                    </div>
+                </div>
+
+                <h4>Podrobné vysvetlenie algoritmu:</h4>
+
+                <div class="method-card">
+                    <h4>1. Čítanie veľkosti matice (thread-safe)</h4>
+                    <pre><code>int matrixSize = GetComboValueSafe(cboChangeMatrix);</code></pre>
+                    <ul>
+                        <li>Pipeline() beží na <strong>background threade</strong> (CaptureLoop)</li>
+                        <li>cboChangeMatrix je <strong>UI kontrolka</strong> (žije na UI threade)</li>
+                        <li>Priamy prístup by vyvolal <strong>CrossThreadException</strong></li>
+                        <li>GetComboValueSafe() použije <code>Invoke()</code> pre bezpečný prístup</li>
+                        <li>Vráti int (16, 32, 64 alebo 128)</li>
+                    </ul>
+                </div>
+
+                <div class="method-card">
+                    <h4>2. Validácia veľkosti</h4>
+                    <pre><code>if (matrixSize > 0)</code></pre>
+                    <ul>
+                        <li>Ochrana proti neplatným hodnotám (0 alebo záporné)</li>
+                        <li>V praxi by to nemalo nastať (default je 32)</li>
+                        <li>Defenzívne programovanie - fail-safe</li>
+                    </ul>
+                </div>
+
+                <div class="method-card">
+                    <h4>3. Vytvorenie výstupného Matu</h4>
+                    <pre><code>Mat matrix = new Mat();</code></pre>
+                    <ul>
+                        <li>Prázdny Mat pre výsledok resize operácie</li>
+                        <li>Cv2.Resize() ho automaticky alokuje</li>
+                    </ul>
+                </div>
+
+                <div class="method-card">
+                    <h4>4. Resize operácia</h4>
+                    <pre><code>Cv2.Resize(cleaned, matrix, new OpenCvSharp.Size(matrixSize, matrixSize),
+           0, 0, InterpolationFlags.Area);</code></pre>
+
+                    <table>
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Hodnota</th>
+                            <th>Význam</th>
+                        </tr>
+                        <tr>
+                            <td><code>cleaned</code></td>
+                            <td>Vstupný Mat</td>
+                            <td>Finálny výsledok z kroku 8 (čierne pozadie, biele objekty)</td>
+                        </tr>
+                        <tr>
+                            <td><code>matrix</code></td>
+                            <td>Výstupný Mat</td>
+                            <td>Sem sa uloží resized výsledok</td>
+                        </tr>
+                        <tr>
+                            <td><code>Size(matrixSize, matrixSize)</code></td>
+                            <td>Cieľová veľkosť</td>
+                            <td>NxN pixelov (napr. 32×32)</td>
+                        </tr>
+                        <tr>
+                            <td><code>0, 0</code></td>
+                            <td>fx, fy</td>
+                            <td>Škálovací faktor (0 = použije Size parameter)</td>
+                        </tr>
+                        <tr>
+                            <td><code>InterpolationFlags.Area</code></td>
+                            <td>Interpolácia</td>
+                            <td><strong>Najlepšia pre zmenšovanie</strong> (zachováva detaily)</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <div class="warning-box">
+                    <h4>Prečo InterpolationFlags.Area?</h4>
+                    <table>
+                        <tr>
+                            <th>Interpolácia</th>
+                            <th>Použitie</th>
+                            <th>Kvalita</th>
+                        </tr>
+                        <tr>
+                            <td><code>Nearest</code></td>
+                            <td>Najrýchlejšia, pixelizovaná</td>
+                            <td>❌ Zlá pre zmenšovanie</td>
+                        </tr>
+                        <tr>
+                            <td><code>Linear</code></td>
+                            <td>Bilineárna, rýchla</td>
+                            <td>⚠️ Stredná</td>
+                        </tr>
+                        <tr>
+                            <td><code>Cubic</code></td>
+                            <td>Bikubická, vysoká kvalita</td>
+                            <td>✅ Dobrá pre zväčšovanie</td>
+                        </tr>
+                        <tr style="background: #e8f5e9;">
+                            <td><code>Area</code></td>
+                            <td><strong>Area-based resampling</strong></td>
+                            <td>✅ <strong>Najlepšia pre zmenšovanie</strong></td>
+                        </tr>
+                    </table>
+                    <p><strong>Area interpolácia:</strong> Priemerne pixely v oblasti → zachováva detaily pri zmenšovaní, bez aliasingu</p>
+                </div>
+
+                <div class="method-card">
+                    <h4>5. Thread-safe uloženie výsledku</h4>
+                    <pre><code>lock (_roiLock)
+{
+    _lastMatrix?.Dispose();
+    _lastMatrix = matrix;
+    matrix = null;
+}</code></pre>
+
+                    <p><strong>Kľúčové body:</strong></p>
+                    <ul>
+                        <li><code>lock (_roiLock)</code>: Zabráni súbehu medzi Pipeline() a UI threadom (zobrazenie picMatrix)</li>
+                        <li><code>_lastMatrix?.Dispose()</code>: Uvoľní starý Mat (prevencia memory leak)</li>
+                        <li><code>_lastMatrix = matrix</code>: Priradí nový Mat</li>
+                        <li><code>matrix = null</code>: Zabráni dispose v finally bloku (vlastníctvo prešlo na _lastMatrix)</li>
+                    </ul>
+                </div>
+
+                <div class="page-break"></div>
+
+                <h3>Zmena 4: Helper metóda GetComboValueSafe() (riadok 1226-1252)</h3>
+
+                <div class="code-section">
+                    <div class="code-header">NOVÁ METÓDA</div>
+                    <div class="change-after">
+                        <pre><code>/// &lt;summary&gt;
+/// Bezpečne prečíta vybranú hodnotu z ComboBoxu aj vtedy, keď je volaná z iného vlákna než UI.
+/// Používa sa na čítanie cboChangeMatrix z background threadu (CaptureLoop -> Pipeline).
+/// &lt;/summary&gt;
+/// &lt;param name="cbo"&gt;ComboBox, z ktorého chceme prečítať hodnotu&lt;/param&gt;
+/// &lt;returns&gt;Vybratá hodnota ako int (napr. 16, 32, 64, 128), alebo 0 ak nič nie je vybrané&lt;/returns&gt;
+private int GetComboValueSafe(ComboBox cbo)
+{
+    // Ak sme na UI threade (InvokeRequired == false), môžeme hodnotu čítať priamo.
+    if (!cbo.InvokeRequired)
+    {
+        // Priamy návrat vybranej hodnoty z ComboBoxu.
+        // SelectedItem je object, musíme ho skonvertovať na int.
+        // Ak nie je nič vybrané (SelectedItem == null), vrátime 0.
+        return cbo.SelectedItem != null ? (int)cbo.SelectedItem : 0;
+    }
+
+    // Ak sme na inom (ne-UI) vlákne, musíme si hodnotu vypýtať cez Invoke na UI thread.
+    // Invoke je blokujúci – počká, kým UI thread hodnotu prečíta a vráti.
+    return (int)cbo.Invoke(new Func&lt;int&gt;(() =&gt;
+    {
+        // Tento kód už beží na UI threade, takže čítanie SelectedItem je bezpečné.
+        // SelectedItem je object (môže byť int 16, 32, 64, 128), skonvertujeme na int.
+        // Ochrana: ak by bolo null, vrátime 0.
+        return cbo.SelectedItem != null ? (int)cbo.SelectedItem : 0;
+    }));
+}</code></pre>
+                    </div>
+                </div>
+
+                <h4>Architektúra cross-thread prístupu:</h4>
+                <div class="architecture-diagram">
+┌─────────────────────────────────────────┐
+│     BACKGROUND THREAD (CaptureLoop)    │
+│                                         │
+│  Pipeline()                             │
+│    ↓                                    │
+│  GetComboValueSafe(cboChangeMatrix)    │
+│    ↓                                    │
+│  if (!cbo.InvokeRequired)               │
+│    FALSE (sme na background threade)   │
+│    ↓                                    │
+│  cbo.Invoke(...)  ──────────────────┐  │
+│    │ BLOKUJE                         │  │
+│    │ čaká na UI thread...            │  │
+└────┼─────────────────────────────────┼──┘
+     │                                 │
+     │                                 ▼
+┌────┼─────────────────────────────────────┐
+│    │        UI THREAD                    │
+│    │                                     │
+│    └──► spracuje Invoke request         │
+│         cbo.SelectedItem                │
+│         vráti hodnotu (napr. 32)        │
+│                ↓                         │
+└────────────────┼─────────────────────────┘
+                 │
+                 ▼
+┌─────────────────────────────────────────┐
+│     BACKGROUND THREAD                   │
+│  GetComboValueSafe() vráti 32           │
+│  matrixSize = 32                        │
+│  Cv2.Resize(..., 32x32, ...)            │
+└─────────────────────────────────────────┘
+                </div>
+
+                <div class="danger-box">
+                    <h4>Čo by sa stalo BEZ GetComboValueSafe()?</h4>
+                    <pre><code>// ❌ CHYBA - priamy prístup z background threadu
+int size = (int)cboChangeMatrix.SelectedItem;
+
+// VÝSLEDOK:
+System.InvalidOperationException:
+Cross-thread operation not valid: Control 'cboChangeMatrix'
+accessed from a thread other than the thread it was created on.</code></pre>
+                    <p><strong>Riešenie:</strong> Vždy použiť Invoke() pre prístup k UI kontrolkám z iného threadu</p>
+                </div>
+
+                <div class="page-break"></div>
+
+                <h3>Zmena 5: CaptureLoop() - zobrazenie picMatrix (riadok 689-746)</h3>
+
+                <div class="code-section">
+                    <div class="code-header">PRIDANÉ po sekcii picCleaned</div>
+                    <div class="change-after">
+                        <pre><code>// ========================= NOVÉ: Zober kópiu matrix a sprav z toho Bitmap =========================
+// Rovnaký pattern ako pre cleaned – thread-safe prístup cez Clone.
+Bitmap bmpMatrix = null;
+
+// Zoberieme snapshot _lastMatrix pod lockom (clone), aby sme nikdy nekonvertovali zdieľaný Mat.
+Mat matrixCopy = null;
+
+lock (_roiLock)
+{
+    // Ak _lastMatrix existuje a nie je prázdny, spravíme kópiu.
+    if (_lastMatrix != null && !_lastMatrix.Empty())
+    {
+        matrixCopy = _lastMatrix.Clone();
+    }
+}
+
+// Ak máme matrixCopy, prevedieme ho na Bitmap mimo locku.
+if (matrixCopy != null)
+{
+    try
+    {
+        // BitmapConverter.ToBitmap() konvertuje Mat → Bitmap (GDI+).
+        // Matrix je malý (napr. 32x32), ale PictureBox ho zväčší cez Zoom mode.
+        bmpMatrix = BitmapConverter.ToBitmap(matrixCopy);
+    }
+    finally
+    {
+        // Uvoľníme lokálnu kópiu matrixCopy (už ju nepotrebujeme).
+        matrixCopy.Dispose();
+    }
+}</code></pre>
+                    </div>
+                </div>
+
+                <p><strong>Pattern je identický ako pre cleaned:</strong></p>
+                <ol>
+                    <li><strong>Clone pod lockom</strong>: Vytvorí bezpečnú kópiu _lastMatrix</li>
+                    <li><strong>Konverzia mimo locku</strong>: BitmapConverter.ToBitmap() beží mimo kritickej sekcie</li>
+                    <li><strong>Dispose v finally</strong>: Uvoľní lokálnu kópiu (prevencia leak)</li>
+                </ol>
+
+                <div class="code-section">
+                    <div class="code-header">PRIDANÉ do UI Update (Invoke blok)</div>
+                    <div class="change-after">
+                        <pre><code>// ====== picMatrix (NOVÉ) ======
+// Ak sme dostali matrix bitmapu (resized 16x16, 32x32, 64x64, 128x128), zobrazíme ju.
+// PictureBox má SizeMode = Zoom, takže malá matica sa zväčší na celý PictureBox.
+if (bmpMatrix != null)
+{
+    // Uvoľníme starý obrázok v picMatrix (ak existuje).
+    picMatrix.Image?.Dispose();
+    // Nastavíme nový obrázok (bmpMatrix vlastníme my, NEclone).
+    picMatrix.Image = bmpMatrix;
+}</code></pre>
+                    </div>
+                </div>
+
+                <p><strong>Vysvetlenie UI update:</strong></p>
+                <ul>
+                    <li>Celý kód beží v <code>Invoke()</code> bloku → bezpečné pre UI thread</li>
+                    <li><code>picMatrix.Image?.Dispose()</code>: Uvoľní starý obrázok (prevencia leak)</li>
+                    <li><code>picMatrix.Image = bmpMatrix</code>: Nastaví nový obrázok</li>
+                    <li>PictureBox má <code>SizeMode = Zoom</code> → malý obrázok (napr. 32×32) sa zväčší proporcionálne</li>
+                </ul>
+
+                <div class="info-box">
+                    <h4>Prečo NEclone pri priradení?</h4>
+                    <p>Na rozdiel od <code>picFrame.Image = (Bitmap)bmpFrame.Clone()</code>, tu NEclonujeme:</p>
+                    <ul>
+                        <li><code>bmpMatrix</code> je lokálna premenná vytvorená v tomto threade</li>
+                        <li>Nie je zdieľaný medzi threadmi</li>
+                        <li>Po priradení do <code>picMatrix.Image</code> vlastníctvo prechádza na PictureBox</li>
+                        <li>PictureBox ho automaticky Dispose-ne pri ďalšom update alebo pri zatvorení formulára</li>
+                    </ul>
+                </div>
+
+                <div class="page-break"></div>
+
+                <h3>Zmena 6: StopCapture() - uvoľnenie zdrojov (riadok 549-585)</h3>
+
+                <h4>Časť A: Dispose _lastMatrix (riadok 549-552)</h4>
+
+                <div class="code-section">
+                    <div class="code-header">PRIDANÉ v lock(_roiLock) bloku</div>
+                    <div class="change-after">
+                        <pre><code>// Uvoľní _lastMatrix (resized verzia cleaned na NxN).
+// Toto je nový Mat pridaný v Kapitole 3 (ChangeMatrix feature).
+_lastMatrix?.Dispose();
+_lastMatrix = null;</code></pre>
+                    </div>
+                </div>
+
+                <p><strong>Umiestnenie:</strong> Hneď po <code>_lastCleaned?.Dispose()</code></p>
+                <p><strong>Účel:</strong></p>
+                <ul>
+                    <li>Uvoľní unmanaged pamäť (OpenCV natívna pamäť)</li>
+                    <li>Nastaví na null (jasne signalizuje, že už neexistuje)</li>
+                    <li>Pod <code>_roiLock</code> (ochrana proti súbehu s Pipeline/CaptureLoop)</li>
+                </ul>
+
+                <h4>Časť B: Dispose picMatrix.Image (riadok 579-585)</h4>
+
+                <div class="code-section">
+                    <div class="code-header">PRIDANÉ v Invoke() bloku</div>
+                    <div class="change-after">
+                        <pre><code>// Uvoľní obrázok v picMatrix (resized matica NxN).
+// Nový PictureBox pridaný v Kapitole 3 (ChangeMatrix feature).
+if (picMatrix.Image != null)
+{
+    picMatrix.Image.Dispose();
+    picMatrix.Image = null;
+}</code></pre>
+                    </div>
+                </div>
+
+                <p><strong>Umiestnenie:</strong> Hneď po <code>picCleaned.Image</code> dispose</p>
+                <p><strong>Účel:</strong></p>
+                <ul>
+                    <li>Uvoľní GDI+ Bitmap (managed objekt, ale uchováva unmanaged handle)</li>
+                    <li>Nastaví na null (PictureBox už nezobrazuje nič)</li>
+                    <li>V <code>Invoke()</code> bloku (UI operácie musia bežať na UI threade)</li>
+                </ul>
+
+                <div class="warning-box">
+                    <h4>Prečo je dôležité uvoľňovať oba objekty?</h4>
+                    <table>
+                        <tr>
+                            <th>Objekt</th>
+                            <th>Typ pamäte</th>
+                            <th>Dôsledok ak sa neuvoľní</th>
+                        </tr>
+                        <tr>
+                            <td><code>_lastMatrix</code></td>
+                            <td>Unmanaged (OpenCV native)</td>
+                            <td><strong>Memory leak</strong> - pamäť sa neuvoľní nikdy (GC ju nevidí)</td>
+                        </tr>
+                        <tr>
+                            <td><code>picMatrix.Image</code></td>
+                            <td>Managed + Unmanaged handle</td>
+                            <td><strong>GDI+ handle leak</strong> - obmedzený počet handles v systéme</td>
+                        </tr>
+                    </table>
+                    <p>Oba musia byť explicitne Dispose-nuté!</p>
+                </div>
+
+                <div class="page-break"></div>
+
+                <h2 id="k3-testovanie">3.4 Testovanie</h2>
+
+                <h3>Test 1: Zmena veľkosti matice počas behu streamu</h3>
+
+                <div class="info-box">
+                    <h4>Kroky</h4>
+                    <ol>
+                        <li>Spusti aplikáciu</li>
+                        <li>Klikni START (spustenie streamu)</li>
+                        <li>V GroupBoxe "ChangeMatrix" otvor dropdown cboChangeMatrix</li>
+                        <li>Vyber postupne: 16 → 32 → 64 → 128</li>
+                        <li>Sleduj picMatrix (vpravo dole)</li>
+                    </ol>
+                </div>
+
+                <div class="success-box">
+                    <h4>Očakávaný výsledok</h4>
+                    <ul>
+                        <li><span class="checkmark">✅</span> picMatrix sa real-time aktualizuje</li>
+                        <li><span class="checkmark">✅</span> Pri 16×16: veľmi pixelizovaný obrázok (malé detaily)</li>
+                        <li><span class="checkmark">✅</span> Pri 32×32: vyvážený obrázok (default)</li>
+                        <li><span class="checkmark">✅</span> Pri 64×64: detailnejší obrázok</li>
+                        <li><span class="checkmark">✅</span> Pri 128×128: najdetailnejší obrázok</li>
+                        <li><span class="checkmark">✅</span> Žiadne pádu, žiadne výnimky</li>
+                        <li><span class="checkmark">✅</span> Plynulé prepínanie (thread-safe)</li>
+                    </ul>
+                </div>
+
+                <h3>Test 2: Kontrola thread-safety</h3>
+
+                <div class="info-box">
+                    <h4>Kroky</h4>
+                    <ol>
+                        <li>Spusti aplikáciu s fast streamo (vysoký FPS)</li>
+                        <li>Počas behu streamu rýchlo prepínaj hodnoty v cboChangeMatrix</li>
+                        <li>Sleduj či nedochádza k výnimkám</li>
+                    </ol>
+                </div>
+
+                <div class="success-box">
+                    <h4>Očakávaný výsledok</h4>
+                    <ul>
+                        <li><span class="checkmark">✅</span> Žiadne CrossThreadException</li>
+                        <li><span class="checkmark">✅</span> Žiadne AccessViolationException</li>
+                        <li><span class="checkmark">✅</span> Žiadne "_dims" chyby</li>
+                        <li><span class="checkmark">✅</span> Plynulá zmena veľkosti</li>
+                    </ul>
+                </div>
+
+                <h3>Test 3: Memory leak kontrola</h3>
+
+                <div class="info-box">
+                    <h4>Kroky</h4>
+                    <ol>
+                        <li>Otvor Task Manager → Performance → Memory</li>
+                        <li>Spusti aplikáciu, START stream</li>
+                        <li>Nechaj bežať 5 minút</li>
+                        <li>Prepínaj hodnoty v cboChangeMatrix každých 10 sekúnd</li>
+                        <li>STOP stream</li>
+                        <li>Sleduj spotrebu pamäte</li>
+                    </ol>
+                </div>
+
+                <div class="success-box">
+                    <h4>Očakávaný výsledok</h4>
+                    <ul>
+                        <li><span class="checkmark">✅</span> Pamäť pomaly rastie počas behu (buffering)</li>
+                        <li><span class="checkmark">✅</span> Po STOP sa pamäť vráti na pôvodnú úroveň (GC vyčistí)</li>
+                        <li><span class="checkmark">✅</span> Žiadny kontinuálny nárast (leak)</li>
+                        <li><span class="checkmark">✅</span> Všetky Mat-y sú správne Dispose-nuté</li>
+                    </ul>
+                </div>
+
+                <h3>Test 4: Porovnanie kvality interpolácií</h3>
+
+                <table>
+                    <tr>
+                        <th>Veľkosť</th>
+                        <th>Interpolácia</th>
+                        <th>Kvalita</th>
+                        <th>Použitie</th>
+                    </tr>
+                    <tr>
+                        <td>16×16</td>
+                        <td>Area</td>
+                        <td>⭐⭐⭐</td>
+                        <td>Quick pattern matching</td>
+                    </tr>
+                    <tr style="background: #e8f5e9;">
+                        <td>32×32</td>
+                        <td>Area</td>
+                        <td>⭐⭐⭐⭐</td>
+                        <td><strong>Optimálny</strong> - OCR/NN input</td>
+                    </tr>
+                    <tr>
+                        <td>64×64</td>
+                        <td>Area</td>
+                        <td>⭐⭐⭐⭐⭐</td>
+                        <td>Detailné rozpoznávanie</td>
+                    </tr>
+                    <tr>
+                        <td>128×128</td>
+                        <td>Area</td>
+                        <td>⭐⭐⭐⭐⭐</td>
+                        <td>Maximum detailov (pomalšie)</td>
+                    </tr>
+                </table>
+
+                <div class="page-break"></div>
+
+                <h2>📊 Zhrnutie zmien</h2>
+
+                <table>
+                    <tr>
+                        <th>Kategória</th>
+                        <th>Pridané</th>
+                        <th>Upravené</th>
+                        <th>Odstránené</th>
+                    </tr>
+                    <tr>
+                        <td><strong>UI Komponenty</strong></td>
+                        <td>3 nové (GroupBox, ComboBox, PictureBox)</td>
+                        <td>ClientSize (785→920)</td>
+                        <td>0</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Fields</strong></td>
+                        <td>1 nový (_lastMatrix)</td>
+                        <td>0</td>
+                        <td>0</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Metódy</strong></td>
+                        <td>1 nová (GetComboValueSafe)</td>
+                        <td>3 upravené (Pipeline, CaptureLoop, StopCapture)</td>
+                        <td>0</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Pipeline kroky</strong></td>
+                        <td>1 nový (krok 9 - ChangeMatrix)</td>
+                        <td>0</td>
+                        <td>0</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Locks</strong></td>
+                        <td>0 (používa existujúci _roiLock)</td>
+                        <td>0</td>
+                        <td>0</td>
+                    </tr>
+                </table>
+
+                <h2>🔧 Technické detaily</h2>
+
+                <h3>Použité technológie</h3>
+                <ul>
+                    <li><strong>OpenCV Resize:</strong> <code>Cv2.Resize()</code> s InterpolationFlags.Area</li>
+                    <li><strong>Thread-safety:</strong> Invoke() + _roiLock</li>
+                    <li><strong>UI Update:</strong> Invoke() pre cross-thread operácie</li>
+                    <li><strong>Memory management:</strong> Dispose pattern pre Mat a Bitmap objekty</li>
+                </ul>
+
+                <h3>Výhody riešenia</h3>
+                <div class="success-box">
+                    <ul>
+                        <li><span class="checkmark">✅</span> Real-time resize počas behu streamu</li>
+                        <li><span class="checkmark">✅</span> Nastaviteľná veľkosť (4 možnosti)</li>
+                        <li><span class="checkmark">✅</span> Optimálna interpolácia (Area pre zmenšovanie)</li>
+                        <li><span class="checkmark">✅</span> Thread-safe implementácia (žiadne race conditions)</li>
+                        <li><span class="checkmark">✅</span> Korektný memory management (žiadne leaky)</li>
+                        <li><span class="checkmark">✅</span> Vizualizácia výsledku (picMatrix s Zoom mode)</li>
+                        <li><span class="checkmark">✅</span> Pripravené pre neurónové siete (normalizovaná veľkosť)</li>
+                    </ul>
+                </div>
+
+                <h3>Možné rozšírenia</h3>
+                <div class="info-box">
+                    <ul>
+                        <li>Export matice do CSV/JSON (pixel values)</li>
+                        <li>Integrácia s neurónovou sieťou (TensorFlow, ML.NET)</li>
+                        <li>Ukladanie matíc do databázy pre pattern matching</li>
+                        <li>Vizualizácia histogram pixel hodnôt</li>
+                        <li>Porovnávanie matíc (similarity score)</li>
+                    </ul>
+                </div>
+
+                <div class="success-box">
+                    <h4>Zhrnutie Kapitoly 3</h4>
+                    <p>ChangeMatrix implementácia prináša:</p>
+                    <ul>
+                        <li><span class="checkmark">✅</span> Nový stupeň v image processing pipeline</li>
+                        <li><span class="checkmark">✅</span> Flexibilná veľkosť výstupu (16×16 až 128×128)</li>
+                        <li><span class="checkmark">✅</span> Optimálna kvalita (Area interpolácia)</li>
+                        <li><span class="checkmark">✅</span> Thread-safe a fail-safe</li>
+                        <li><span class="checkmark">✅</span> Real-time vizualizácia</li>
+                        <li><span class="checkmark">✅</span> Pripravené pre ML/NN aplikácie</li>
+                    </ul>
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- KAPITOLA 4: OPTIMALIZÁCIA IMAGE PROCESSING - VARIANT A       -->
+        <!-- ============================================================ -->
+
+        <div id="kapitola4" class="chapter">
+
+            <!-- HEADER KAPITOLY -->
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px; border-radius: 10px; margin-bottom: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
+                <h1 style="margin: 0; font-size: 2.5em; text-align: center; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);">
+                    📊 Kapitola 4
+                </h1>
+                <h2 style="margin: 10px 0 0 0; font-size: 1.5em; text-align: center; font-weight: normal; opacity: 0.95;">
+                    Optimalizácia Image Processing Pipeline - Variant A
+                </h2>
+                <p style="text-align: center; margin-top: 15px; font-size: 1.1em; opacity: 0.9;">
+                    <strong>Dátum:</strong> 2026-01-09 | <strong>Východzí stav:</strong> Kapitola 3 | <strong>Cieľ:</strong> Optimalizácia pre rozpoznávanie číslic
+                </p>
+            </div>
+
+            <!-- ============================================================ -->
+            <!-- SEKCIA 4.1: ÚVOD A ANALÝZA PROBLÉMU                          -->
+            <!-- ============================================================ -->
+
+            <div class="section">
+                <h2>4.1 Úvod a Cieľ Optimalizácie</h2>
+
+                <div class="info-box">
+                    <strong>🎯 Hlavný cieľ:</strong> Optimalizovať existujúci Image Processing pipeline pre čo najlepšie rozpoznávanie <strong>dvojice digitálnych číslic</strong> (napr. "42", "15", "99") z ROI oblasti ESP32-CAM streamu.
+                </div>
+
+                <h3>4.1.1 Identifikované Problémy v Pôvodnom Pipeline (Kapitola 3)</h3>
+
+                <div class="error-box">
+                    <strong>❌ PROBLÉM #1: Duplicitné Smoothing</strong>
+                    <p><code>Bilateral Filter</code> (krok 2) a <code>Gaussian Blur</code> (krok 4) vykonávajú podobnú funkciu. Bilateral Filter už robí high-quality smoothing s edge preservation, takže <strong>Gaussian Blur je zbytočný a stráca detaily číslic</strong>.</p>
+                </div>
+
+                <div class="warning-box">
+                    <strong>⚠️ PROBLÉM #2: Neoptimálne Parametre</strong>
+                    <ul>
+                        <li><strong>blockSize=41</strong> v Adaptive Threshold je príliš veľký pre malé číslice → optimálne <strong>15</strong></li>
+                        <li><strong>CLAHE tileGridSize=(8,8)</strong> príliš veľké pre malé číslice → lepšie <strong>(4,4)</strong></li>
+                        <li><strong>Bilateral sigma=50</strong> môže byť silnejší → <strong>75</strong></li>
+                        <li><strong>CLAHE clipLimit=2.0</strong> slabý kontrast → <strong>3.0</strong></li>
+                        <li><strong>minArea=350</strong> príliš veľké pre malé číslice → <strong>200</strong></li>
+                    </ul>
+                </div>
+
+                <div class="warning-box">
+                    <strong>⚠️ PROBLÉM #3: Hardcoded Parametre</strong>
+                    <p>Všetky pipeline parametre boli hardcoded v kóde. Používateľ nemohol meniť parametre bez rekompilácie aplikácie.</p>
+                </div>
+
+                <h3>4.1.2 Navrhnuté Riešenie - Variant A</h3>
+
+                <div class="success-box">
+                    <strong>✅ STRATÉGIA VARIANT A</strong>
+                    <p>Minimálne zmeny v pipeline, ale s maximálnym efektom:</p>
+                    <ol>
+                        <li><strong>Odstránenie Gaussian Blur</strong> (duplicitný s Bilateral Filter)</li>
+                        <li><strong>Optimalizácia parametrov</strong> pre malé číslice</li>
+                        <li><strong>Integrácia do Settings.json</strong> - všetky parametre konfigurovateľné</li>
+                        <li><strong>Pridanie UI kontroliek</strong> - dynamické nastavovanie parametrov</li>
+                    </ol>
+                </div>
+
+            </div>
+
+            <!-- ============================================================ -->
+            <!-- SEKCIA 4.2: ROZŠÍRENIE SETTINGS.CS                           -->
+            <!-- ============================================================ -->
+
+            <div class="section">
+                <h2>4.2 Rozšírenie Settings.cs o Pipeline Parametre</h2>
+
+                <p class="description">
+                    Prvý krok optimalizácie bol rozšíriť <code>Settings.cs</code> o všetky parametre Image Processing pipeline, aby boli konfigurovateľné cez <code>Settings.json</code> súbor.
+                </p>
+
+                <h3>4.2.1 Pridané Properties</h3>
+
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Kategória</th>
+                            <th>Property</th>
+                            <th>Typ</th>
+                            <th>Default Hodnota</th>
+                            <th>Popis</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td rowspan="5"><strong>ROI</strong></td>
+                            <td>ROIX</td>
+                            <td>int</td>
+                            <td>25</td>
+                            <td>X súradnica ROI v % (0-100)</td>
+                        </tr>
+                        <tr>
+                            <td>ROIY</td>
+                            <td>int</td>
+                            <td>25</td>
+                            <td>Y súradnica ROI v % (0-100)</td>
+                        </tr>
+                        <tr>
+                            <td>ROIWidth</td>
+                            <td>int</td>
+                            <td>50</td>
+                            <td>Šírka ROI v % (0-100)</td>
+                        </tr>
+                        <tr>
+                            <td>ROIHeight</td>
+                            <td>int</td>
+                            <td>50</td>
+                            <td>Výška ROI v % (0-100)</td>
+                        </tr>
+                        <tr>
+                            <td>ResizeScale</td>
+                            <td>double</td>
+                            <td>2.0</td>
+                            <td>Scale factor pre zväčšenie ROI</td>
+                        </tr>
+                        <tr>
+                            <td rowspan="3"><strong>Bilateral</strong></td>
+                            <td>BilateralD</td>
+                            <td>int</td>
+                            <td>9</td>
+                            <td>Diameter filtra</td>
+                        </tr>
+                        <tr>
+                            <td>BilateralSigmaColor</td>
+                            <td>int</td>
+                            <td><strong>75</strong> (↑ bolo 50)</td>
+                            <td>Sigma pre color space - <strong>OPTIMALIZOVANÉ</strong></td>
+                        </tr>
+                        <tr>
+                            <td>BilateralSigmaSpace</td>
+                            <td>int</td>
+                            <td><strong>75</strong> (↑ bolo 50)</td>
+                            <td>Sigma pre coordinate space - <strong>OPTIMALIZOVANÉ</strong></td>
+                        </tr>
+                        <tr>
+                            <td rowspan="3"><strong>CLAHE</strong></td>
+                            <td>CLAHEClipLimit</td>
+                            <td>double</td>
+                            <td><strong>3.0</strong> (↑ bolo 2.0)</td>
+                            <td>Clip limit pre kontrast - <strong>OPTIMALIZOVANÉ</strong></td>
+                        </tr>
+                        <tr>
+                            <td>CLAHETileGridSizeX</td>
+                            <td>int</td>
+                            <td><strong>4</strong> (↓ bolo 8)</td>
+                            <td>Tile grid X - <strong>OPTIMALIZOVANÉ</strong></td>
+                        </tr>
+                        <tr>
+                            <td>CLAHETileGridSizeY</td>
+                            <td>int</td>
+                            <td><strong>4</strong> (↓ bolo 8)</td>
+                            <td>Tile grid Y - <strong>OPTIMALIZOVANÉ</strong></td>
+                        </tr>
+                        <tr>
+                            <td rowspan="2"><strong>Threshold</strong></td>
+                            <td>AdaptiveThresholdBlockSize</td>
+                            <td>int</td>
+                            <td><strong>15</strong> (↓ bolo 41)</td>
+                            <td>Block size - <strong>OPTIMALIZOVANÉ PRE MALÉ ČÍSLICE</strong></td>
+                        </tr>
+                        <tr>
+                            <td>AdaptiveThresholdC</td>
+                            <td>double</td>
+                            <td>5.0</td>
+                            <td>Konštanta C pre prah</td>
+                        </tr>
+                        <tr>
+                            <td rowspan="3"><strong>Morphology</strong></td>
+                            <td>MorphologyKernelSize</td>
+                            <td>int</td>
+                            <td>3</td>
+                            <td>Veľkosť kernelu (3×3)</td>
+                        </tr>
+                        <tr>
+                            <td>MorphologyOpenIterations</td>
+                            <td>int</td>
+                            <td>1</td>
+                            <td>Počet Open iterácií</td>
+                        </tr>
+                        <tr>
+                            <td>MorphologyCloseIterations</td>
+                            <td>int</td>
+                            <td>1</td>
+                            <td>Počet Close iterácií</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Connected Components</strong></td>
+                            <td>MinArea</td>
+                            <td>int</td>
+                            <td><strong>200</strong> (↓ bolo 350)</td>
+                            <td>Minimálna plocha objektu - <strong>OPTIMALIZOVANÉ</strong></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="note-box">
+                    <strong>💡 Poznámka:</strong> Optimalizované hodnoty (označené <strong>OPTIMALIZOVANÉ</strong>) boli vybrané na základe analýzy v <code>OptimalizaciaPipeline.html</code> (Variant A).
+                </div>
+
+                <h3>4.2.2 Ukážka Settings.json (Príklad)</h3>
+
+<pre>{
+  "IPAddress": [
+    "http://192.168.50.96:81/stream",
+    "http://192.168.50.100:81/stream"
+  ],
+  "ROIX": 25,
+  "ROIY": 25,
+  "ROIWidth": 50,
+  "ROIHeight": 50,
+  "ResizeScale": 2.0,
+  "BilateralD": 9,
+  "BilateralSigmaColor": 75,
+  "BilateralSigmaSpace": 75,
+  "CLAHEClipLimit": 3.0,
+  "CLAHETileGridSizeX": 4,
+  "CLAHETileGridSizeY": 4,
+  "AdaptiveThresholdBlockSize": 15,
+  "AdaptiveThresholdC": 5.0,
+  "MorphologyKernelSize": 3,
+  "MorphologyOpenIterations": 1,
+  "MorphologyCloseIterations": 1,
+  "MinArea": 200
+}</pre>
+
+            </div>
+
+            <!-- ============================================================ -->
+            <!-- SEKCIA 4.3: PRIDANIE UI KONTROLIEK                           -->
+            <!-- ============================================================ -->
+
+            <div class="section">
+                <h2>4.3 Pridanie UI Kontroliek (MainForm.Designer.cs)</h2>
+
+                <p class="description">
+                    Druhý krok bol pridať <strong>3 nové GroupBoxy</strong> s kontrolkami pre dynamické nastavovanie pipeline parametrov v UI.
+                </p>
+
+                <h3>4.3.1 Pridané GroupBoxy</h3>
+
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>GroupBox</th>
+                            <th>Kontrolky</th>
+                            <th>Umiestnenie</th>
+                            <th>Veľkosť</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>grpBilateral</strong></td>
+                            <td>
+                                <ul style="margin: 5px 0; padding-left: 20px;">
+                                    <li>nudBilateralD (1-31)</li>
+                                    <li>nudBilateralSigmaColor (1-200)</li>
+                                    <li>nudBilateralSigmaSpace (1-200)</li>
+                                </ul>
+                            </td>
+                            <td>(10, 250)</td>
+                            <td>230×120</td>
+                        </tr>
+                        <tr>
+                            <td><strong>grpClahe</strong></td>
+                            <td>
+                                <ul style="margin: 5px 0; padding-left: 20px;">
+                                    <li>nudCLAHEClipLimit (0.5-100, decimal)</li>
+                                    <li>nudCLAHETileGridSizeX (2-32)</li>
+                                    <li>nudCLAHETileGridSizeY (2-32)</li>
+                                </ul>
+                            </td>
+                            <td>(10, 380)</td>
+                            <td>230×120</td>
+                        </tr>
+                        <tr>
+                            <td><strong>grpMorphology</strong></td>
+                            <td>
+                                <ul style="margin: 5px 0; padding-left: 20px;">
+                                    <li>nudMorphologyKernelSize (3-21, +2 increment)</li>
+                                    <li>nudMorphologyOpenIterations (1-10)</li>
+                                    <li>nudMorphologyCloseIterations (1-10)</li>
+                                </ul>
+                            </td>
+                            <td>(250, 250)</td>
+                            <td>230×120</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="note-box">
+                    <strong>💡 Layout:</strong> <code>grpBilateral</code> a <code>grpClahe</code> sú umiestnené vertikálne vľavo (pod grpRoi). <code>grpMorphology</code> je vpravo od <code>grpBilateral</code>.
+                </div>
+
+            </div>
+
+            <!-- ============================================================ -->
+            <!-- SEKCIA 4.4: NAČÍTANIE SETTINGS V MAINFORM.CS                 -->
+            <!-- ============================================================ -->
+
+            <div class="section">
+                <h2>4.4 Načítanie Settings do UI (MainForm.cs Konštruktor)</h2>
+
+                <p class="description">
+                    V konštruktore <code>MainForm()</code> sme pridali načítanie všetkých parametrov zo <code>Settings.json</code> do UI kontroliek.
+                </p>
+
+                <h3>4.4.1 Zmeny v Konštruktore</h3>
+
+                <div class="comparison">
+                    <div class="old">
+                        <strong>🔴 PÔVODNÝ KÓD (Kapitola 3)</strong>
+<pre>// ROI hardcoded
+nudX.Value = 0;
+nudY.Value = 0;
+nudWidth.Value = 100;
+nudHeight.Value = 100;
+
+// Resize hardcoded
+nudResize.Value = 3;
+
+// Threshold hardcoded
+nudBlockSize.Value = 41;
+nudC.Value = 5;
+nudMinArea.Value = 350;
+
+// Pipeline parametre: hardcoded v Pipeline() metóde
+// (Bilateral: 50, CLAHE: 2.0/8×8, atď.)</pre>
+                    </div>
+                    <div class="new">
+                        <strong>🟢 NOVÝ KÓD (Kapitola 4)</strong>
+<pre>// ROI z Settings
+nudX.Value = _settings.ROIX;                    // 25
+nudY.Value = _settings.ROIY;                    // 25
+nudWidth.Value = _settings.ROIWidth;            // 50
+nudHeight.Value = _settings.ROIHeight;          // 50
+
+// Resize z Settings
+nudResize.Value = (decimal)_settings.ResizeScale;  // 2.0
+
+// Threshold z Settings
+nudBlockSize.Value = _settings.AdaptiveThresholdBlockSize;  // 15 ✓
+nudC.Value = (decimal)_settings.AdaptiveThresholdC;         // 5.0
+nudMinArea.Value = _settings.MinArea;                        // 200 ✓
+
+// NOVÉ: Bilateral z Settings
+nudBilateralD.Value = _settings.BilateralD;                     // 9
+nudBilateralSigmaColor.Value = _settings.BilateralSigmaColor;   // 75 ✓
+nudBilateralSigmaSpace.Value = _settings.BilateralSigmaSpace;   // 75 ✓
+
+// NOVÉ: CLAHE z Settings
+nudCLAHEClipLimit.Value = (decimal)_settings.CLAHEClipLimit;           // 3.0 ✓
+nudCLAHETileGridSizeX.Value = _settings.CLAHETileGridSizeX;            // 4 ✓
+nudCLAHETileGridSizeY.Value = _settings.CLAHETileGridSizeY;            // 4 ✓
+
+// NOVÉ: Morphology z Settings
+nudMorphologyKernelSize.Value = _settings.MorphologyKernelSize;             // 3
+nudMorphologyOpenIterations.Value = _settings.MorphologyOpenIterations;     // 1
+nudMorphologyCloseIterations.Value = _settings.MorphologyCloseIterations;   // 1</pre>
+                    </div>
+                </div>
+
+                <div class="success-box">
+                    <strong>✅ Výsledok:</strong> Všetky parametre sú teraz načítané zo Settings.json pri štarte aplikácie. Používateľ môže meniť Settings.json manuálne alebo dynamicky v UI (hodnoty v UI sa nezapisujú späť do Settings, iba sa používajú počas behu).
+                </div>
+
+            </div>
+
+            <!-- ============================================================ -->
+            <!-- SEKCIA 4.5: OPTIMALIZÁCIA PIPELINE() METÓDY                  -->
+            <!-- ============================================================ -->
+
+            <div class="section">
+                <h2>4.5 Optimalizácia Pipeline() Metódy - Variant A</h2>
+
+                <p class="description">
+                    Hlavná časť Kapitoly 4: <strong>úprava Pipeline() metódy</strong> podľa Variant A z <code>OptimalizaciaPipeline.html</code>.
+                </p>
+
+                <h3>4.5.1 Kľúčové Zmeny</h3>
+
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Krok</th>
+                            <th>Pôvodne (Kapitola 3)</th>
+                            <th>Nové (Kapitola 4)</th>
+                            <th>Dôvod</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>1) Gray</strong></td>
+                            <td>Bez zmeny</td>
+                            <td>Bez zmeny</td>
+                            <td>-</td>
+                        </tr>
+                        <tr>
+                            <td><strong>2) Bilateral</strong></td>
+                            <td>d=9, sigma=50 (hardcoded)</td>
+                            <td>Načítané z UI: d=9, sigma=<strong>75</strong></td>
+                            <td>Silnejšie odstránenie šumu pre číslice</td>
+                        </tr>
+                        <tr>
+                            <td><strong>3) CLAHE</strong></td>
+                            <td>clipLimit=2.0, tile=(8,8) (hardcoded)</td>
+                            <td>Načítané z UI: clipLimit=<strong>3.0</strong>, tile=<strong>(4,4)</strong></td>
+                            <td>Silnejší kontrast, jemnejšia lokálnosť pre malé číslice</td>
+                        </tr>
+                        <tr style="background: #ffebee;">
+                            <td><strong>4) Gaussian</strong></td>
+                            <td>Cv2.GaussianBlur(contrast, smoothGaussian, (3,3))</td>
+                            <td><strong>❌ ODSTRÁNENÉ</strong></td>
+                            <td><strong>Duplicitné s Bilateral Filter, stráca detaily</strong></td>
+                        </tr>
+                        <tr style="background: #e8f5e9;">
+                            <td><strong>5) Threshold</strong></td>
+                            <td>Vstup: smoothGaussian, blockSize=41</td>
+                            <td>Vstup: <strong>contrast</strong> (priamo z CLAHE), blockSize=<strong>15</strong></td>
+                            <td>Bez zbytočného bluru, optimálny blockSize pre malé číslice</td>
+                        </tr>
+                        <tr>
+                            <td><strong>6) Morphology</strong></td>
+                            <td>kernel=3×3, iterations=1 (hardcoded)</td>
+                            <td>Načítané z UI (default rovnaké)</td>
+                            <td>Konfigurovateľnosť</td>
+                        </tr>
+                        <tr>
+                            <td><strong>7) Connected</strong></td>
+                            <td>minArea=350 (hardcoded)</td>
+                            <td>Načítané z UI: minArea=<strong>200</strong></td>
+                            <td>Optimalizované pre menšie číslice</td>
+                        </tr>
+                        <tr>
+                            <td><strong>8) ChangeMatrix</strong></td>
+                            <td>Bez zmeny</td>
+                            <td>Bez zmeny</td>
+                            <td>-</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>4.5.2 Ukážka Kódu - Bilateral Filter (PRED a PO)</h3>
+
+                <div class="comparison">
+                    <div class="old">
+                        <strong>🔴 PRED (Kapitola 3)</strong>
+<pre>// 2) Bilateral filter
+smooth = new Mat();
+Cv2.BilateralFilter(gray, smooth,
+    d: 9,
+    sigmaColor: 50,  // hardcoded
+    sigmaSpace: 50   // hardcoded
+);</pre>
+                    </div>
+                    <div class="new">
+                        <strong>🟢 PO (Kapitola 4)</strong>
+<pre>// 2) Bilateral filter (OPTIMALIZOVANÉ)
+// Načítané z UI (thread-safe)
+int bilateralD = (int)GetNudValueSafe(nudBilateralD);
+int bilateralSigmaColor = (int)GetNudValueSafe(nudBilateralSigmaColor);
+int bilateralSigmaSpace = (int)GetNudValueSafe(nudBilateralSigmaSpace);
+
+smooth = new Mat();
+Cv2.BilateralFilter(gray, smooth,
+    d: bilateralD,                  // z UI (default: 9)
+    sigmaColor: bilateralSigmaColor,  // z UI (default: 75) ✓
+    sigmaSpace: bilateralSigmaSpace   // z UI (default: 75) ✓
+);</pre>
+                    </div>
+                </div>
+
+                <h3>4.5.3 Ukážka Kódu - CLAHE (PRED a PO)</h3>
+
+                <div class="comparison">
+                    <div class="old">
+                        <strong>🔴 PRED (Kapitola 3)</strong>
+<pre>// 3) CLAHE
+var clahe = Cv2.CreateCLAHE(
+    clipLimit: 2.0,  // hardcoded
+    tileGridSize: new Size(8, 8)  // hardcoded
+);
+contrast = new Mat();
+clahe.Apply(smooth, contrast);</pre>
+                    </div>
+                    <div class="new">
+                        <strong>🟢 PO (Kapitola 4)</strong>
+<pre>// 3) CLAHE (OPTIMALIZOVANÉ)
+// Načítané z UI (thread-safe)
+double claheClipLimit = (double)GetNudValueSafe(nudCLAHEClipLimit);
+int claheTileX = (int)GetNudValueSafe(nudCLAHETileGridSizeX);
+int claheTileY = (int)GetNudValueSafe(nudCLAHETileGridSizeY);
+
+var clahe = Cv2.CreateCLAHE(
+    clipLimit: claheClipLimit,  // z UI (default: 3.0) ✓
+    tileGridSize: new Size(claheTileX, claheTileY)  // z UI (default: 4×4) ✓
+);
+contrast = new Mat();
+clahe.Apply(smooth, contrast);</pre>
+                    </div>
+                </div>
+
+                <h3>4.5.4 Ukážka Kódu - ODSTRÁNENIE Gaussian Blur</h3>
+
+                <div class="comparison">
+                    <div class="old">
+                        <strong>🔴 PRED (Kapitola 3)</strong>
+<pre>// 3) CLAHE
+var clahe = Cv2.CreateCLAHE(...);
+contrast = new Mat();
+clahe.Apply(smooth, contrast);
+
+// 4) Gaussian blur
+smoothGaussian = new Mat();
+Cv2.GaussianBlur(contrast, smoothGaussian,
+    new Size(3, 3), 0);
+
+// 5) Adaptive threshold
+binary = new Mat();
+Cv2.AdaptiveThreshold(
+    smoothGaussian,  // vstup z Gaussian Blur
+    binary,
+    ...
+);</pre>
+                    </div>
+                    <div class="new">
+                        <strong>🟢 PO (Kapitola 4)</strong>
+<pre>// 3) CLAHE
+var clahe = Cv2.CreateCLAHE(...);
+contrast = new Mat();
+clahe.Apply(smooth, contrast);
+
+// 4) Gaussian blur - ODSTRÁNENÉ ❌
+// [ODSTRÁNENÉ] Duplicitný s Bilateral Filter
+// smoothGaussian = new Mat();  // ODSTRÁNENÉ
+// Cv2.GaussianBlur(...);        // ODSTRÁNENÉ
+
+// 5) Adaptive threshold
+binary = new Mat();
+Cv2.AdaptiveThreshold(
+    contrast,  // PRIAMO z CLAHE (bez Gaussian Blur) ✓
+    binary,
+    ...
+);</pre>
+                    </div>
+                </div>
+
+                <div class="success-box">
+                    <strong>✅ Výsledok Odstránenia Gaussian Blur:</strong>
+                    <ul>
+                        <li>Eliminácia duplicitného smoothingu</li>
+                        <li>Zachovanie väčšieho množstva detailov číslic</li>
+                        <li>Rýchlejšie spracovanie (jeden krok menej)</li>
+                        <li>Ostrejšie hrany v binarizovanom obraze</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <!-- ============================================================ -->
+            <!-- SEKCIA 4.6: ZHRNUTIE ZMIEN                                   -->
+            <!-- ============================================================ -->
+
+            <div class="section">
+                <h2>4.6 Zhrnutie Všetkých Zmien</h2>
+
+                <h3>4.6.1 Zmenené Súbory</h3>
+
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Súbor</th>
+                            <th>Počet Zmien</th>
+                            <th>Typ Zmien</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Settings.cs</strong></td>
+                            <td>+17 properties, +60 riadkov</td>
+                            <td>Pridané pipeline parametre s default hodnotami</td>
+                        </tr>
+                        <tr>
+                            <td><strong>MainForm.Designer.cs</strong></td>
+                            <td>+39 kontroliek, +300 riadkov</td>
+                            <td>Pridané 3 GroupBoxy (grpBilateral, grpClahe, grpMorphology)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>MainForm.cs (Konštruktor)</strong></td>
+                            <td>+75 riadkov</td>
+                            <td>Načítanie všetkých parametrov zo Settings do UI</td>
+                        </tr>
+                        <tr>
+                            <td><strong>MainForm.cs (Pipeline)</strong></td>
+                            <td>+80 riadkov, -10 riadkov (Gaussian)</td>
+                            <td>Optimalizácia pipeline (Variant A)</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>4.6.2 Kľúčové Parametre - PRED vs. PO</h3>
+
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Kapitola 3 (Pôvodne)</th>
+                            <th>Kapitola 4 (Optimalizované)</th>
+                            <th>Zmena</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Bilateral sigmaColor</td>
+                            <td>50 (hardcoded)</td>
+                            <td>75 (Settings/UI)</td>
+                            <td class="success-cell">+50% ↑</td>
+                        </tr>
+                        <tr>
+                            <td>Bilateral sigmaSpace</td>
+                            <td>50 (hardcoded)</td>
+                            <td>75 (Settings/UI)</td>
+                            <td class="success-cell">+50% ↑</td>
+                        </tr>
+                        <tr>
+                            <td>CLAHE clipLimit</td>
+                            <td>2.0 (hardcoded)</td>
+                            <td>3.0 (Settings/UI)</td>
+                            <td class="success-cell">+50% ↑</td>
+                        </tr>
+                        <tr>
+                            <td>CLAHE tileGridSize</td>
+                            <td>8×8 (hardcoded)</td>
+                            <td>4×4 (Settings/UI)</td>
+                            <td class="success-cell">-50% ↓</td>
+                        </tr>
+                        <tr>
+                            <td>Gaussian Blur</td>
+                            <td>Cv2.GaussianBlur(...)</td>
+                            <td><strong>ODSTRÁNENÉ</strong></td>
+                            <td class="error-cell">❌</td>
+                        </tr>
+                        <tr>
+                            <td>Threshold blockSize</td>
+                            <td>41 (hardcoded)</td>
+                            <td>15 (Settings/UI)</td>
+                            <td class="success-cell">-63% ↓</td>
+                        </tr>
+                        <tr>
+                            <td>Threshold vstup</td>
+                            <td>smoothGaussian</td>
+                            <td>contrast (priamo z CLAHE)</td>
+                            <td class="success-cell">✓ Optimalizované</td>
+                        </tr>
+                        <tr>
+                            <td>MinArea filter</td>
+                            <td>350 (hardcoded)</td>
+                            <td>200 (Settings/UI)</td>
+                            <td class="success-cell">-43% ↓</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+            </div>
+
+            <!-- ============================================================ -->
+            <!-- SEKCIA 4.7: OČAKÁVANÉ VÝSLEDKY A TESTOVANIE                  -->
+            <!-- ============================================================ -->
+
+            <div class="section">
+                <h2>4.7 Očakávané Výsledky a Testovanie</h2>
+
+                <h3>4.7.1 Očakávané Zlepšenia</h3>
+
+                <div class="success-box">
+                    <strong>✅ Očakávané Výsledky Variant A:</strong>
+                    <ul>
+                        <li><strong>Lepší kontrast</strong> medzi číslicami a pozadím (vďaka CLAHE 3.0 a menším tiles)</li>
+                        <li><strong>Ostrejšie hrany</strong> číslic (odstránenie duplicitného Gaussian Blur)</li>
+                        <li><strong>Menej šumu</strong> v pozadí (silnejší Bilateral Filter)</li>
+                        <li><strong>Lepšia binarizácia</strong> malých číslic (blockSize 15 namiesto 41)</li>
+                        <li><strong>Menej false-positives</strong> pri Connected Components (minArea 200 namiesto 350)</li>
+                        <li><strong>Plná konfigurovateľnosť</strong> všetkých parametrov cez Settings.json a UI</li>
+                    </ul>
+                </div>
+
+                <h3>4.7.2 Testovací Scenár</h3>
+
+                <div class="note-box">
+                    <strong>🧪 Odporúčaný Testovací Postup:</strong>
+                    <ol>
+                        <li>Spustiť aplikáciu s default hodnotami (Settings.json s optimalizovanými parametrami)</li>
+                        <li>Testovať na reálnych čísliciach z ESP32-CAM streamu</li>
+                        <li>Sledovať <code>picCleaned</code> - číslice by mali byť biele, pozadie čierne, bez šumu</li>
+                        <li>Experimentovať s <code>nudBlockSize</code> (11, 15, 21) podľa veľkosti ROI</li>
+                        <li>Experimentovať s <code>nudC</code> (3.0-7.0) podľa kontrastu</li>
+                        <li>Sledovať <code>picMatrix</code> - NxN obraz by mal obsahovať rozpoznateľné číslice</li>
+                    </ol>
+                </div>
+
+                <h3>4.7.3 Debug Tipy</h3>
+
+                <div class="info-box">
+                    <strong>💡 Debug Vizualizácia:</strong>
+                    <p>Pre rýchle ladenie môžete dočasne odkomentovať debug zobrazenie v <code>Pipeline()</code> (riadok ~1326):</p>
+<pre>Cv2.ImShow("contrast", contrast);  // Zobrazí CLAHE výstup
+Cv2.ImShow("binary", binary);      // Zobrazí binarizovaný obraz
+Cv2.ImShow("cleaned", cleaned);    // Zobrazí finálny cleaned obraz</pre>
+                    <p>Toto otvorí OpenCV okná s medzivýsledkami (užitočné pre ladenie parametrov).</p>
+                </div>
+
+            </div>
+
+            <!-- ============================================================ -->
+            <!-- SEKCIA 4.8: BUDÚCE ROZŠÍRENIA (Variant B/C)                  -->
+            <!-- ============================================================ -->
+
+            <div class="section">
+                <h2>4.8 Budúce Rozšírenia</h2>
+
+                <p class="description">
+                    Kapitola 4 implementovala <strong>Variant A</strong> (minimálne zmeny). V budúcnosti môžu byť implementované pokročilejšie varianty:
+                </p>
+
+                <h3>4.8.1 Variant B - Segmentácia Číslic (Contours)</h3>
+
+                <div class="info-box">
+                    <strong>📌 Variant B - Popis:</strong>
+                    <ul>
+                        <li>Pridať krok <strong>FindContours</strong> po Connected Components</li>
+                        <li>Extrahovať <strong>bounding boxy</strong> okolo jednotlivých číslic</li>
+                        <li>Zoradiť číslice <strong>zľava doprava</strong></li>
+                        <li>Vytvoriť <code>List&lt;DigitInfo&gt;</code> s extrahovanými číslicami</li>
+                        <li>Pridať vizualizáciu kontúr v UI (nový PictureBox)</li>
+                        <li>Pripraviť pre OCR/NN rozpoznávanie</li>
+                    </ul>
+                </div>
+
+                <h3>4.8.2 Variant C - Edge Detection (Canny)</h3>
+
+                <div class="warning-box">
+                    <strong>⚠️ Variant C - Experimentálny:</strong>
+                    <ul>
+                        <li>Pridať <strong>Canny Edge Detection</strong> po CLAHE</li>
+                        <li>Kombinovať edges s binary (OR operácia)</li>
+                        <li>Vhodné pre prípad veľmi slabého kontrastu</li>
+                        <li><strong>Riziko:</strong> Môže pridať šum, výpočtovo náročné</li>
+                    </ul>
+                </div>
+
+                <h3>4.8.3 OCR Integrácia (Budúcnosť)</h3>
+
+                <div class="info-box">
+                    <strong>🔮 OCR Integrácia:</strong>
+                    <p>Po úspešnej segmentácii (Variant B) môžeme integrovať OCR engine:</p>
+                    <ul>
+                        <li><strong>Tesseract OCR</strong> - open source OCR (NuGet: Tesseract)</li>
+                        <li><strong>Neurónová sieť</strong> - vlastný model trénovaný na MNIST-like čísliciach</li>
+                        <li><strong>Template Matching</strong> - porovnanie s vzorovými číslicami</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <!-- ============================================================ -->
+            <!-- SEKCIA 4.9: ZÁVER KAPITOLY                                   -->
+            <!-- ============================================================ -->
+
+            <div class="section">
+                <h2>4.9 Záver Kapitoly 4</h2>
+
+                <div class="success-box">
+                    <strong>✅ Kapitola 4 - Zhrnutie Úspechov:</strong>
+                    <ol>
+                        <li><strong>Rozšírenie Settings.cs</strong> - Pridaných 17 konfigurovateľných parametrov</li>
+                        <li><strong>Pridanie UI kontroliek</strong> - 3 GroupBoxy (39 kontroliek) pre dynamické nastavovanie</li>
+                        <li><strong>Načítanie Settings</strong> - Všetky parametre načítané pri štarte aplikácie</li>
+                        <li><strong>Optimalizácia Pipeline</strong> - Variant A implementovaný (Gaussian Blur odstránený, parametre optimalizované)</li>
+                        <li><strong>Plná konfigurovateľnosť</strong> - Používateľ môže ladiť pipeline bez rekompilácie</li>
+                    </ol>
+                </div>
+
+                <div class="note-box">
+                    <strong>📊 Štatistiky Kapitoly 4:</strong>
+                    <ul>
+                        <li><strong>Pridané riadky kódu:</strong> ~515 riadkov (Settings.cs: 60, Designer.cs: 300, MainForm.cs: 155)</li>
+                        <li><strong>Odstránené riadky kódu:</strong> ~10 riadkov (Gaussian Blur)</li>
+                        <li><strong>Nové properties:</strong> 17 (Settings.cs)</li>
+                        <li><strong>Nové kontrolky:</strong> 39 (3 GroupBoxy + 30 Labels/NumericUpDown)</li>
+                        <li><strong>Optimalizovaných parametrov:</strong> 6 (sigmaColor/Space, clipLimit, tileGridSize, blockSize, minArea)</li>
+                    </ul>
+                </div>
+
+                <div class="info-box">
+                    <strong>🚀 Ďalšie Kroky:</strong>
+                    <p>Po testovaní Variant A na reálnych dátach môžeme pristúpiť k:</p>
+                    <ul>
+                        <li><strong>Kapitola 5</strong> - Implementácia Variant B (Segmentácia číslic)</li>
+                        <li><strong>Kapitola 6</strong> - OCR integrácia (Tesseract/NN)</li>
+                        <li><strong>Kapitola 7</strong> - Real-time rozpoznávanie a databáza záznamov</li>
+                    </ul>
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- FOOTER -->
+        <div style="background: #34495e; color: white; padding: 20px 40px; text-align: center;">
+            <p style="margin: 0; font-size: 0.9em;">
+                <strong>GUIVideoProcessing - Technická dokumentácia</strong><br>
+                Verzia 1.0 | 2026-01-09 | Vytvorené pomocou Claude Code
+            </p>
+        </div>
+
+    </div>
+
+    <!-- PRINT BUTTON -->
+    <button class="print-button no-print" onclick="window.print()">
+        🖨️ Tlačiť / Uložiť PDF
+    </button>
+
+</body>
+</html>

@@ -1,0 +1,41 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- OPRAVA (KAPITOLA 5): Potlačenie CA1416 warnings pre OpenCvSharp (TurboJpeg) -->
+    <!-- Aplikácia je Windows-only, takže platform compatibility warnings nie sú relevantné -->
+    <SupportedOSPlatform>windows</SupportedOSPlatform>
+    <NoWarn>CA1416</NoWarn>
+    <!-- OPRAVA: Fix pre IDE1100 a MSB3577 chyby -->
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <GenerateResourceUsePreserializedResources>false</GenerateResourceUsePreserializedResources>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="OpenCvSharp4" Version="4.11.0.20250507" />
+    <PackageReference Include="OpenCvSharp4.Extensions" Version="4.11.0.20250507" />
+    <PackageReference Include="OpenCvSharp4.runtime.win" Version="4.11.0.20250507" />
+    <PackageReference Include="MySqlConnector" Version="2.3.7" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.17.1" />
+    <PackageReference Include="Tesseract" Version="5.2.0" />
+  </ItemGroup>
+
+  <!-- ONNX model pre rozpoznávanie číslic - kopíruje sa do output priečinka -->
+  <ItemGroup>
+    <None Update="mnist.onnx">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <!-- Tesseract tessdata - jazykové modely pre OCR -->
+  <ItemGroup>
+    <None Update="tessdata\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>
