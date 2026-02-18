@@ -21,19 +21,11 @@
     <PackageReference Include="OpenCvSharp4.runtime.win" Version="4.11.0.20250507" />
     <PackageReference Include="MySqlConnector" Version="2.3.7" />
     <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.17.1" />
-    <PackageReference Include="Tesseract" Version="5.2.0" />
   </ItemGroup>
 
-  <!-- ONNX model pre rozpoznávanie číslic - kopíruje sa do output priečinka -->
+  <!-- ONNX model pre rozpoznávanie 7-segmentových číslic -->
   <ItemGroup>
-    <None Update="mnist.onnx">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-
-  <!-- Tesseract tessdata - jazykové modely pre OCR -->
-  <ItemGroup>
-    <None Update="tessdata\**\*">
+    <None Update="model\model.onnx">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>

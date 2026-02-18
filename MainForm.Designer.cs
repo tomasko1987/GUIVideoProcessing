@@ -13,8 +13,11 @@
 		private System.Windows.Forms.Button btnStop;
 		// Tlačidlo SAVE - uloží UI nastavenia do Settings.json
 		private System.Windows.Forms.Button btnSave;
-		// ComboBox pre výber metódy rozpoznávania číslic (7-SEG, MNIST, Tesseract)
+		// ComboBox pre výber metódy rozpoznávania číslic (7-SEG, ONNX)
 		private System.Windows.Forms.ComboBox cboRecognitionMethod;
+		// Label a NumericUpDown pre ONNX confidence threshold
+		private System.Windows.Forms.Label lblOnnxConfidence;
+		private System.Windows.Forms.NumericUpDown nudOnnxConfidence;
 		// PictureBox pre zobrazenie frame s vyznačeným ROI
 		private System.Windows.Forms.PictureBox picFrame;
 
@@ -172,6 +175,8 @@
 			btnStop = new Button();
 			btnSave = new Button();
 			cboRecognitionMethod = new ComboBox();
+			lblOnnxConfidence = new Label();
+			nudOnnxConfidence = new NumericUpDown();
 			picFrame = new PictureBox();
 			grpRoi = new GroupBox();
 			btnRoi = new Button();
@@ -472,6 +477,26 @@
 			cboRecognitionMethod.Size = new Size(100, 23);
 			cboRecognitionMethod.TabIndex = 4;
 			cboRecognitionMethod.SelectedIndexChanged += cboRecognitionMethod_SelectedIndexChanged;
+			//
+			// lblOnnxConfidence
+			//
+			lblOnnxConfidence.AutoSize = true;
+			lblOnnxConfidence.Location = new Point(850, 16);
+			lblOnnxConfidence.Name = "lblOnnxConfidence";
+			lblOnnxConfidence.Size = new Size(35, 15);
+			lblOnnxConfidence.Text = "Conf:";
+			//
+			// nudOnnxConfidence
+			//
+			nudOnnxConfidence.DecimalPlaces = 2;
+			nudOnnxConfidence.Increment = new decimal(new int[] { 5, 0, 0, 131072 });
+			nudOnnxConfidence.Location = new Point(890, 12);
+			nudOnnxConfidence.Maximum = new decimal(new int[] { 1, 0, 0, 0 });
+			nudOnnxConfidence.Minimum = new decimal(new int[] { 0, 0, 0, 0 });
+			nudOnnxConfidence.Name = "nudOnnxConfidence";
+			nudOnnxConfidence.Size = new Size(60, 23);
+			nudOnnxConfidence.TabIndex = 5;
+			nudOnnxConfidence.Value = new decimal(new int[] { 50, 0, 0, 131072 });
 			//
 			// picFrame
 			// 
@@ -1039,6 +1064,8 @@
 			Controls.Add(grpResize);
 			Controls.Add(grpRoi);
 			Controls.Add(picFrame);
+			Controls.Add(nudOnnxConfidence);
+			Controls.Add(lblOnnxConfidence);
 			Controls.Add(cboRecognitionMethod);
 			Controls.Add(btnSave);
 			Controls.Add(btnStop);

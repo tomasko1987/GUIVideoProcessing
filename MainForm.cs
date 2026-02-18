@@ -102,13 +102,8 @@ namespace GUIVideoProcessing
 
 		private DigitSegmentation? _digitSeg;
 
-		// ONNX Digit Recognizer – rozpoznávanie číslic pomocou neurónovej siete (MNIST model).
-		// Ak model nie je načítaný (súbor neexistuje), rozpoznávanie je deaktivované.
-		private DigitRecognizer? _digitRecognizer;
-
-		// Tesseract OCR Recognizer – rozpoznávanie číslic pomocou Tesseract OCR.
-		// Ak tessdata nie je dostupná, rozpoznávanie je deaktivované.
-		private TesseractRecognizer? _tesseractRecognizer;
+		// ONNX Digit Recognizer – rozpoznávanie číslic pomocou natrénovanej neurónovej siete.
+		private OnnxDigitRecognizer? _onnxRecognizer;
 
 		// ========================= NOVÉ FIELDY PRE ROZDELENIE NA DVE ČÍSLICE =========================
 		// Thread-safe: Tieto Mat objekty sú zdieľané medzi capture thread (Pipeline) a UI thread (PictureBox).
@@ -323,75 +318,35 @@ namespace GUIVideoProcessing
 			_digitSeg = new DigitSegmentation(_logger);
 
 			// ========================= ONNX DIGIT RECOGNIZER =========================
-			// Inicializácia rozpoznávača číslic pomocou ONNX modelu (MNIST).
-			_digitRecognizer = new DigitRecognizer(_logger);
-
-			// Načítaj model z cesty v Settings.json
+			_onnxRecognizer = new OnnxDigitRecognizer(_logger);
 			string modelPath = _settings.OnnxModelPath;
 			if (!Path.IsPathRooted(modelPath))
 			{
-				// Relatívna cesta -> absolútna (relatívne k priečinku s aplikáciou)
 				modelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, modelPath);
 			}
-
-			bool mnistAvailable = _digitRecognizer.LoadModel(modelPath);
-			if (mnistAvailable)
-			{
-				_logger.Info($"ONNX digit recognizer loaded: {modelPath}");
-			}
-			else
-			{
-				_logger.Warn($"ONNX model not found or failed to load: {modelPath}");
-			}
-
-			// ========================= TESSERACT OCR RECOGNIZER =========================
-			// Inicializácia Tesseract OCR pre rozpoznávanie číslic.
-			_tesseractRecognizer = new TesseractRecognizer(_logger);
-
-			string tessDataPath = _settings.TesseractDataPath;
-			if (!Path.IsPathRooted(tessDataPath))
-			{
-				tessDataPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, tessDataPath);
-			}
-
-			bool tesseractAvailable = _tesseractRecognizer.Initialize(tessDataPath, _settings.TesseractLanguage);
-			if (tesseractAvailable)
-			{
-				_logger.Info($"Tesseract OCR initialized: {tessDataPath}");
-			}
-			else
-			{
-				_logger.Warn($"Tesseract OCR not available. Download tessdata and place it in: {tessDataPath}");
-			}
+			bool onnxAvailable = _onnxRecognizer.LoadModel(modelPath);
 
 			// ========================= NAPLNENIE COMBOBOXU PRE VÝBER METÓDY =========================
-			// 7-SEG je vždy dostupný (hardcoded algoritmus)
 			cboRecognitionMethod.Items.Add("7-SEG");
-
-			if (mnistAvailable)
+			if (onnxAvailable)
 			{
-				cboRecognitionMethod.Items.Add("MNIST");
+				cboRecognitionMethod.Items.Add("ONNX");
 			}
 
-			if (tesseractAvailable)
-			{
-				cboRecognitionMethod.Items.Add("Tesseract");
-			}
-
-			// Vyber metódu podľa Settings.json alebo prvú dostupnú
 			string preferredMethod = _settings.RecognitionMethod;
 			int preferredIndex = cboRecognitionMethod.Items.IndexOf(preferredMethod);
-
 			if (preferredIndex >= 0)
 			{
 				cboRecognitionMethod.SelectedIndex = preferredIndex;
 			}
 			else
 			{
-				// Preferovaná metóda nie je dostupná - vyber prvú dostupnú
 				cboRecognitionMethod.SelectedIndex = 0;
 				_logger.Warn($"Preferred recognition method '{preferredMethod}' not available, using '{cboRecognitionMethod.SelectedItem}'");
 			}
+
+			// Načítaj ONNX confidence z Settings do UI
+			nudOnnxConfidence.Value = (decimal)_settings.OnnxMinConfidence;
 
 			// ========================= NUMREG INTERVAL (každých N sekúnd) =========================
 			// Načíta interval vyhodnocovania z Settings.json.
@@ -430,22 +385,6 @@ namespace GUIVideoProcessing
 			}
 
 			lvNumReg.Items.Clear();
-		}
-
-		/// <summary>
-		/// Event handler pre zmenu metódy rozpoznávania číslic.
-		/// Prepína medzi 7-SEG, MNIST a Tesseract.
-		/// </summary>
-		private void cboRecognitionMethod_SelectedIndexChanged(object? sender, EventArgs e)
-		{
-			string? selectedMethod = cboRecognitionMethod.SelectedItem?.ToString();
-			_logger?.Info($"Recognition method changed to: {selectedMethod}");
-
-			// Ulož výber do Settings (bude uložené pri SAVE)
-			if (!string.IsNullOrEmpty(selectedMethod))
-			{
-				_settings.RecognitionMethod = selectedMethod;
-			}
 		}
 
 		// Obsluha kliknutia na tlačidlo START – spustenie streamu
@@ -525,6 +464,9 @@ namespace GUIVideoProcessing
 				_settings.FromLeft = (int)GetNudValueSafe(nudFromLeft);
 				_settings.FromRight = (int)GetNudValueSafe(nudFromRight);
 
+				// ONNX confidence threshold
+				_settings.OnnxMinConfidence = (float)GetNudValueSafe(nudOnnxConfidence);
+
 				// LED intenzita (0-255)
 				_settings.LedIntensity = trkLedIntensity.Value;
 
@@ -557,6 +499,21 @@ namespace GUIVideoProcessing
 					MessageBoxButtons.OK,
 					MessageBoxIcon.Error
 				);
+			}
+		}
+
+		/// <summary>
+		/// Event handler pre zmenu metódy rozpoznávania číslic.
+		/// Prepína medzi 7-SEG a ONNX.
+		/// </summary>
+		private void cboRecognitionMethod_SelectedIndexChanged(object? sender, EventArgs e)
+		{
+			string? selectedMethod = cboRecognitionMethod.SelectedItem?.ToString();
+			_logger?.Info($"Recognition method changed to: {selectedMethod}");
+
+			if (!string.IsNullOrEmpty(selectedMethod))
+			{
+				_settings.RecognitionMethod = selectedMethod;
 			}
 		}
 
@@ -1225,13 +1182,28 @@ namespace GUIVideoProcessing
 				return;
 
 			// Zápis do res.txt (thread-safe, mimo UI thread).
+			// Rotácia: ak res.txt presiahne 10 MB, premenuje sa na res_old.txt a začne nový.
 			try
 			{
 				string timeText = entry.TimestampUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss");
 				string line = $"{timeText}\t{entry.Text}";
 				string logsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs");
 				Directory.CreateDirectory(logsDir);
-				File.AppendAllText(Path.Combine(logsDir, "res.txt"), line + Environment.NewLine);
+				string resPath = Path.Combine(logsDir, "res.txt");
+
+				const long maxResFileSize = 10 * 1024 * 1024; // 10 MB
+				if (File.Exists(resPath))
+				{
+					var fi = new FileInfo(resPath);
+					if (fi.Length > maxResFileSize)
+					{
+						string oldPath = Path.Combine(logsDir, "res_old.txt");
+						if (File.Exists(oldPath)) File.Delete(oldPath);
+						File.Move(resPath, oldPath);
+					}
+				}
+
+				File.AppendAllText(resPath, line + Environment.NewLine);
 			}
 			catch { /* ignoruj chyby zápisu, aby neblokovali UI */ }
 
@@ -1567,14 +1539,8 @@ namespace GUIVideoProcessing
 			_mySqlWriter = null;
 
 			// ========================= STOP ONNX DIGIT RECOGNIZER =========================
-			// Uvoľni ONNX session (ak bola načítaná).
-			try { _digitRecognizer?.Dispose(); } catch { /* ignore */ }
-			_digitRecognizer = null;
-
-			// ========================= STOP TESSERACT RECOGNIZER =========================
-			// Uvoľni Tesseract engine (ak bol inicializovaný).
-			try { _tesseractRecognizer?.Dispose(); } catch { /* ignore */ }
-			_tesseractRecognizer = null;
+			try { _onnxRecognizer?.Dispose(); } catch { /* ignore */ }
+			_onnxRecognizer = null;
 
 			// Dispose logger – dopíše frontu a zavrie súbor.
 			_logger?.Dispose();
@@ -1815,6 +1781,8 @@ namespace GUIVideoProcessing
 				//  - krátka pauza pri failoch, aby sa nepálilo CPU v rýchlom fail-loop-e.
 				DateTime lastGoodFrameUtc = DateTime.UtcNow;
 				int consecutiveReadFailures = 0;
+				int totalReconnectAttempts = 0;
+				const int maxReconnectAttempts = 50;
 				TimeSpan noFrameTimeout = TimeSpan.FromSeconds(5);
 				int failureThreshold = 50;
 				int failedReadSleepMs = 10;
@@ -1872,9 +1840,26 @@ namespace GUIVideoProcessing
 						// 2) alebo dlhý čas bez validného frame
 						if (consecutiveReadFailures >= failureThreshold || sinceLastGood > noFrameTimeout)
 						{
+							totalReconnectAttempts++;
+
+							if (totalReconnectAttempts > maxReconnectAttempts)
+							{
+								_logger.Error(
+									$"Stream watchdog: max reconnect attempts ({maxReconnectAttempts}) reached. Stopping capture.");
+								StopCapture();
+								return;
+							}
+
+							// Exponenciálny backoff: čakanie pred reconnectom (max 30s).
+							int backoffMs = Math.Min(1000 * totalReconnectAttempts, 30000);
+
 							_logger.Warn(
 								$"Stream watchdog triggered: failures={consecutiveReadFailures}, " +
-								$"sinceLastGood={sinceLastGood.TotalSeconds:0.0}s. Reconnecting...");
+								$"sinceLastGood={sinceLastGood.TotalSeconds:0.0}s, " +
+								$"attempt={totalReconnectAttempts}/{maxReconnectAttempts}. " +
+								$"Reconnecting after {backoffMs}ms backoff...");
+
+							Thread.Sleep(backoffMs);
 
 							// Reconnect: bezpečne zrušíme starý VideoCapture a otvoríme nový s rovnakou URL.
 							TryReconnectCapture(selectedUrl);
@@ -1889,6 +1874,7 @@ namespace GUIVideoProcessing
 
 					// ========================= VALIDNÝ FRAME – RESET WATCHDOG =========================
 					consecutiveReadFailures = 0;
+					totalReconnectAttempts = 0; // Úspešný frame = reset reconnect počítadla
 					lastGoodFrameUtc = DateTime.UtcNow;
 
 
@@ -2433,7 +2419,7 @@ namespace GUIVideoProcessing
 				int claheTileX = (int)GetNudValueSafe(nudCLAHETileGridSizeX); // TileGridSize X (default: 4, optimalizované)
 				int claheTileY = (int)GetNudValueSafe(nudCLAHETileGridSizeY); // TileGridSize Y (default: 4, optimalizované)
 
-				var clahe = Cv2.CreateCLAHE(
+				using var clahe = Cv2.CreateCLAHE(
 					clipLimit: claheClipLimit,                          // ClipLimit (bolo: 2.0, teraz: 3.0 optimalizované)
 					tileGridSize: new OpenCvSharp.Size(claheTileX, claheTileY)  // TileGridSize (bolo: 8×8, teraz: 4×4 optimalizované pre malé číslice)
 				);
@@ -2471,7 +2457,7 @@ namespace GUIVideoProcessing
 				int morphologyCloseIterations = (int)GetNudValueSafe(nudMorphologyCloseIterations); // Close iterations (default: 1)
 
 				// Vytvorenie kernelu (štruktúrujúci element) pre morphology operácie
-				Mat kernel = Cv2.GetStructuringElement(
+				using Mat kernel = Cv2.GetStructuringElement(
 					MorphShapes.Rect,                                              // Obdĺžnikový kernel (štandardný)
 					new OpenCvSharp.Size(morphologyKernelSize, morphologyKernelSize)  // Veľkosť kernelu (bolo: 3×3 hardcoded, teraz z UI)
 				);
@@ -2625,84 +2611,23 @@ namespace GUIVideoProcessing
 					if (doEval)
 					{
 						// ========================= VÝBER METÓDY ROZPOZNÁVANIA =========================
-						// Prečítaj vybranú metódu z ComboBoxu (thread-safe)
 						string selectedMethod = GetComboTextSafe(cboRecognitionMethod);
 
-						if (selectedMethod == "MNIST" && _digitRecognizer != null && _digitRecognizer.IsLoaded)
+						if (selectedMethod == "ONNX" && _onnxRecognizer != null && _onnxRecognizer.IsLoaded)
 						{
-							// ========================= MNIST (ONNX) ROZPOZNÁVANIE =========================
-							var digits = _digitSeg?.ExtractDigits(cleaned) ?? new List<Mat>();
+							// ========================= ONNX ROZPOZNÁVANIE =========================
+							var (leftDigit, leftConf) = _onnxRecognizer.RecognizeDigit(leftPart);
+							var (rightDigit, rightConf) = _onnxRecognizer.RecognizeDigit(rightPart);
 
-							if (digits.Count >= 2)
-							{
-								var (leftDigit, leftConf) = _digitRecognizer.RecognizeDigit(digits[0]);
-								var (rightDigit, rightConf) = _digitRecognizer.RecognizeDigit(digits[1]);
+							float minConfidence = (float)GetNudValueSafe(nudOnnxConfidence);
+							leftValue = (leftDigit >= 0 && leftConf >= minConfidence) ? leftDigit : (int?)null;
+							rightValue = (rightDigit >= 0 && rightConf >= minConfidence) ? rightDigit : (int?)null;
 
-								float minConfidence = _settings.OnnxMinConfidence;
-								leftValue = (leftDigit >= 0 && leftConf >= minConfidence) ? leftDigit : (int?)null;
-								rightValue = (rightDigit >= 0 && rightConf >= minConfidence) ? rightDigit : (int?)null;
-
-								_logger?.Debug($"MNIST: Left={leftDigit} ({leftConf:P0}), Right={rightDigit} ({rightConf:P0})");
-							}
-							else if (digits.Count == 1)
-							{
-								var (digit, conf) = _digitRecognizer.RecognizeDigit(digits[0]);
-								float minConfidence = _settings.OnnxMinConfidence;
-
-								leftValue = null;
-								rightValue = (digit >= 0 && conf >= minConfidence) ? digit : (int?)null;
-
-								_logger?.Debug($"MNIST: Only 1 digit found: {digit} ({conf:P0})");
-							}
-							else
-							{
-								leftValue = null;
-								rightValue = null;
-								_logger?.Debug("MNIST: No digits found in cleaned image");
-							}
-
-							foreach (var d in digits) d?.Dispose();
-						}
-						else if (selectedMethod == "Tesseract" && _tesseractRecognizer != null && _tesseractRecognizer.IsLoaded)
-						{
-							// ========================= TESSERACT OCR ROZPOZNÁVANIE =========================
-							var digits = _digitSeg?.ExtractDigits(cleaned) ?? new List<Mat>();
-
-							if (digits.Count >= 2)
-							{
-								var (leftDigit, leftConf) = _tesseractRecognizer.RecognizeDigit(digits[0]);
-								var (rightDigit, rightConf) = _tesseractRecognizer.RecognizeDigit(digits[1]);
-
-								float minConfidence = _settings.TesseractMinConfidence;
-								leftValue = (leftDigit >= 0 && leftConf >= minConfidence) ? leftDigit : (int?)null;
-								rightValue = (rightDigit >= 0 && rightConf >= minConfidence) ? rightDigit : (int?)null;
-
-								_logger?.Debug($"Tesseract: Left={leftDigit} ({leftConf:P0}), Right={rightDigit} ({rightConf:P0})");
-							}
-							else if (digits.Count == 1)
-							{
-								var (digit, conf) = _tesseractRecognizer.RecognizeDigit(digits[0]);
-								float minConfidence = _settings.TesseractMinConfidence;
-
-								leftValue = null;
-								rightValue = (digit >= 0 && conf >= minConfidence) ? digit : (int?)null;
-
-								_logger?.Debug($"Tesseract: Only 1 digit found: {digit} ({conf:P0})");
-							}
-							else
-							{
-								leftValue = null;
-								rightValue = null;
-								_logger?.Debug("Tesseract: No digits found in cleaned image");
-							}
-
-							foreach (var d in digits) d?.Dispose();
+							_logger?.Debug($"ONNX: Left={leftDigit} ({leftConf:P0}), Right={rightDigit} ({rightConf:P0})");
 						}
 						else
 						{
 							// ========================= 7-SEG DEKÓDÉR (DEFAULT) =========================
-							// Používa sa ak je zvolený 7-SEG alebo iná metóda nie je dostupná
-
 							if (TryDecodeSevenSegmentFromCleaned(leftPart, out int lVal, out string lText))
 							{
 								leftValue = lVal;
@@ -2724,51 +2649,51 @@ namespace GUIVideoProcessing
 							_logger?.Debug($"7-SEG: Left={leftValue?.ToString() ?? "?"}, Right={rightValue?.ToString() ?? "?"}");
 						}
 
+
 						// ========================= EXPORT TRÉNOVACÍCH PRÍKLADOV (64×96 PNG) =========================
-						// Po dokončení rozpoznávania exportujeme cleaned aj originálne výrezy.
-						// Timestamp sa generuje RAZ pre všetky 4 exporty (2 cleaned + 2 originál),
-						// aby mali rovnaký názov súboru v párovom priečinku (napr. 1/ a 1_O/).
-						string exportTimestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss_fff");
-
-						// Export cleaned (binárnych) výrezov do priečinkov 0-9/N.
-						ExportDigitExample(leftPart, leftValue, "L", exportTimestamp, "");
-						ExportDigitExample(rightPart, rightValue, "R", exportTimestamp, "");
-
-						// Export originálnych (nespracovaných) výrezov do priečinkov 0_O-9_O/N_O.
-						// Klonujeme _lastRoi pod zámkom, aby capture thread nemohol meniť/Dispose-núť originál.
-						Mat? roiClone = null;
-						lock (_roiLock)
+						// Ukladanie vzoriek je riadené nastavením StoreSample v Settings.json.
+						if (_settings.StoreSample)
 						{
-							if (_lastRoi != null && !_lastRoi.Empty())
-								roiClone = _lastRoi.Clone();
-						}
+							string exportTimestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss_fff");
 
-						if (roiClone != null)
-						{
-							try
+							// Export cleaned (binárnych) výrezov do priečinkov 0-9/N.
+							ExportDigitExample(leftPart, leftValue, "L", exportTimestamp, "");
+							ExportDigitExample(rightPart, rightValue, "R", exportTimestamp, "");
+
+							// Export originálnych (nespracovaných) výrezov do priečinkov 0_O-9_O/N_O.
+							Mat? roiClone = null;
+							lock (_roiLock)
 							{
-								int roiWidth = roiClone.Width;
-								int roiHeight = roiClone.Height;
-
-								// Rovnaká logika rozdelenia ako pre cleaned – fromLeftPercent/fromRightPercent.
-								int origLeftWidth = (roiWidth * fromLeftPercent) / 100;
-								int origRightWidth = (roiWidth * fromRightPercent) / 100;
-								if (origLeftWidth < 1) origLeftWidth = 1;
-								if (origRightWidth < 1) origRightWidth = 1;
-								if (origLeftWidth > roiWidth) origLeftWidth = roiWidth;
-								if (origRightWidth > roiWidth) origRightWidth = roiWidth;
-
-								using var origLeftPart = new Mat(roiClone, new Rect(0, 0, origLeftWidth, roiHeight)).Clone();
-								int origRightStartX = roiWidth - origRightWidth;
-								if (origRightStartX < 0) origRightStartX = 0;
-								using var origRightPart = new Mat(roiClone, new Rect(origRightStartX, 0, origRightWidth, roiHeight)).Clone();
-
-								ExportDigitExample(origLeftPart, leftValue, "L", exportTimestamp, "_O");
-								ExportDigitExample(origRightPart, rightValue, "R", exportTimestamp, "_O");
+								if (_lastRoi != null && !_lastRoi.Empty())
+									roiClone = _lastRoi.Clone();
 							}
-							finally
+
+							if (roiClone != null)
 							{
-								roiClone.Dispose();
+								try
+								{
+									int roiWidth = roiClone.Width;
+									int roiHeight = roiClone.Height;
+
+									int origLeftWidth = (roiWidth * fromLeftPercent) / 100;
+									int origRightWidth = (roiWidth * fromRightPercent) / 100;
+									if (origLeftWidth < 1) origLeftWidth = 1;
+									if (origRightWidth < 1) origRightWidth = 1;
+									if (origLeftWidth > roiWidth) origLeftWidth = roiWidth;
+									if (origRightWidth > roiWidth) origRightWidth = roiWidth;
+
+									using var origLeftPart = new Mat(roiClone, new Rect(0, 0, origLeftWidth, roiHeight)).Clone();
+									int origRightStartX = roiWidth - origRightWidth;
+									if (origRightStartX < 0) origRightStartX = 0;
+									using var origRightPart = new Mat(roiClone, new Rect(origRightStartX, 0, origRightWidth, roiHeight)).Clone();
+
+									ExportDigitExample(origLeftPart, leftValue, "L", exportTimestamp, "_O");
+									ExportDigitExample(origRightPart, rightValue, "R", exportTimestamp, "_O");
+								}
+								finally
+								{
+									roiClone.Dispose();
+								}
 							}
 						}
 					}
@@ -2985,21 +2910,16 @@ namespace GUIVideoProcessing
 		}
 
 		/// <summary>
-		/// Bezpečne prečíta vybraný text z ComboBoxu aj vtedy, keď je volaná z iného vlákna než UI.
-		/// Používa sa na čítanie cboRecognitionMethod z background threadu (CaptureLoop -> Pipeline).
+		/// Bezpečne prečíta vybraný text z ComboBoxu aj z iného vlákna než UI.
 		/// </summary>
-		/// <param name="cbo">ComboBox, z ktorého chceme prečítať text</param>
-		/// <returns>Vybraný text alebo prázdny string</returns>
 		private string GetComboTextSafe(ComboBox cbo)
 		{
-			// Ak sme na UI threade, môžeme hodnotu čítať priamo.
 			if (!cbo.InvokeRequired)
 			{
 				return cbo.SelectedItem?.ToString() ?? "";
 			}
-
-			// Ak sme na inom vlákne, musíme si hodnotu vypýtať cez Invoke na UI thread.
 			return (string)cbo.Invoke(new Func<string>(() => cbo.SelectedItem?.ToString() ?? ""));
 		}
+
 	}
 }

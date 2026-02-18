@@ -255,7 +255,7 @@ namespace GUIVideoProcessing
 		/// </summary>
 		/// <param name="cleaned">Cleaned image (white digits on black background)</param>
 		/// <param name="digitRects">Bounding rectangles číslic</param>
-		/// <param name="targetSize">Cieľová veľkosť (default: 28x28 ako MNIST)</param>
+		/// <param name="targetSize">Cieľová veľkosť (default: 28x28)</param>
 		/// <returns>List Mat objektov - každý obsahuje jednu číslicu (28x28)</returns>
 		private List<Mat> ExtractAndResizeDigits(Mat cleaned, List<Rect> digitRects, int targetSize = 28)
 		{
@@ -272,11 +272,11 @@ namespace GUIVideoProcessing
 				}
 
 				// 1. CROP: Orezaj číslicu z cleaned image
-				Mat digit = new Mat(cleaned, rect); // Mat(source, ROI)
+				using Mat digit = new Mat(cleaned, rect); // Mat(source, ROI)
 
 				// 2. PADDING: Pridaj padding, aby číslica mala štvorcový tvar
 				// (Dôvod: Resize na 28x28 by deformoval aspect ratio)
-				Mat padded = AddSquarePadding(digit);
+				using Mat padded = AddSquarePadding(digit);
 
 				// 3. RESIZE: Zmenši/zväčši na 28x28 px
 				Mat resized = new Mat();
@@ -310,7 +310,10 @@ namespace GUIVideoProcessing
 
 			// Skopíruj číslicu do centra
 			Rect roi = new Rect(offsetX, offsetY, width, height);
-			digit.CopyTo(new Mat(padded, roi));
+			using (var subMat = new Mat(padded, roi))
+			{
+				digit.CopyTo(subMat);
+			}
 
 			return padded;
 		}

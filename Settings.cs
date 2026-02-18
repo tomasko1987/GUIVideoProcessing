@@ -109,6 +109,10 @@ namespace GUIVideoProcessing
 		public double SegmentOnThreshold { get; set; } = 0.35;
 
 		
+		// Či sa majú ukladať vzorky rozpoznaných číslic (PNG) do logs/examples/.
+		// true = ukladať, false = neukladať. Default: false.
+		public bool StoreSample { get; set; } = false;
+
 		// ========================= NUMERIC RECOGNITION (NUMREG) =========================
 		// Ako často sa majú uložiť vyhodnotené čísla (sekundy).
 		// Požiadavka: vyhodnocovať každých 10 sekúnd.
@@ -143,36 +147,20 @@ namespace GUIVideoProcessing
 		// Ako dlho čakať medzi pokusmi o pripojenie, ak MySQL nie je dostupná.
 		public int MySqlReconnectDelaySeconds { get; set; } = 5;
 
-		// ========================= ONNX DIGIT RECOGNITION =========================
-		// Cesta k ONNX modelu pre rozpoznávanie číslic (MNIST).
-		// Ak je prázdna alebo súbor neexistuje, rozpoznávanie bude deaktivované.
+		// ========================= ONNX ROZPOZNÁVANIE ČÍSLIC =========================
+		// Cesta k ONNX modelu pre rozpoznávanie 7-segmentových číslic.
 		// Relatívna cesta je relatívna k priečinku s aplikáciou.
-		public string OnnxModelPath { get; set; } = "mnist.onnx";
+		public string OnnxModelPath { get; set; } = "model/model.onnx";
 
 		// Minimálna confidence (istota) pre akceptovanie rozpoznanej číslice (0.0-1.0).
-		// Ak je confidence nižšia, číslica sa označí ako '?'.
 		public float OnnxMinConfidence { get; set; } = 0.5f;
-
-		// ========================= TESSERACT OCR =========================
-		// Cesta k priečinku tessdata s jazykovými modelmi pre Tesseract.
-		// Relatívna cesta je relatívna k priečinku s aplikáciou.
-		// Ak priečinok neexistuje, Tesseract bude nedostupný.
-		public string TesseractDataPath { get; set; } = "tessdata";
-
-		// Jazyk pre Tesseract OCR. Default: "eng" (English).
-		// Musí existovať súbor {jazyk}.traineddata v tessdata priečinku.
-		public string TesseractLanguage { get; set; } = "eng";
-
-		// Minimálna confidence pre Tesseract OCR (0.0-1.0).
-		public float TesseractMinConfidence { get; set; } = 0.5f;
 
 		// ========================= VÝBER METÓDY ROZPOZNÁVANIA =========================
 		// Aktuálne vybraná metóda rozpoznávania číslic.
-		// Možnosti: "7-SEG", "MNIST", "Tesseract"
-		// Ak vybraná metóda nie je dostupná, automaticky sa použije fallback.
-		public string RecognitionMethod { get; set; } = "MNIST";
+		// Možnosti: "7-SEG", "ONNX"
+		public string RecognitionMethod { get; set; } = "ONNX";
 
-// ========================= PARAMETRE PRE ROZDELENIE NA DVE ČÍSLICE =========================
+		// ========================= PARAMETRE PRE ROZDELENIE NA DVE ČÍSLICE =========================
 		// Parametre pre rozdelenie cleaned obrazu na ľavú a pravú časť (2 číslice).
 		// Každá hodnota je v percentách (1-100) a určuje, koľko percent z celkovej šírky
 		// cleaned obrazu sa použije pre detekciu danej číslice.
