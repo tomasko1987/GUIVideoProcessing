@@ -95,6 +95,8 @@ namespace GUIVideoProcessing
 				DefaultCommandTimeout = 5,
 				// Odporúčané pri niektorých MySQL serveroch:
 				SslMode = MySqlSslMode.None,
+				// MySQL 8.0+ (caching_sha2_password) bez SSL vyžaduje RSA key retrieval:
+				AllowPublicKeyRetrieval = true,
 			};
 
 			return csb.ConnectionString;
