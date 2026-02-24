@@ -26,9 +26,13 @@ namespace GUIVideoProcessing
 		private readonly string _settingsPath =
 			Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Settings.json");
 
-		// Zámok (mutex) pre _cap – zabezpečí, že sa _cap nebude Dispose()ovať v rovnakom čase,
-		// keď iné vlákno práve volá _cap.Read(frame). Toto priamo zabraňuje AccessViolationException.
-		private readonly object _capLock = new object();
+		// HTTP klient pre MJPEG stream (ESP32-CAM).
+		// Timeout je nastavený na InfiniteTimeSpan – per-request timeouty riešime cez CancellationToken.
+		// Singleton – jeden HttpClient pre celú aplikáciu (best practice pre .NET).
+		private static readonly HttpClient _mjpegHttpClient = new HttpClient
+		{
+			Timeout = System.Threading.Timeout.InfiniteTimeSpan
+		};
 
 		// ROI lock
 		private readonly object _roiLock = new object();
@@ -55,8 +59,12 @@ namespace GUIVideoProcessing
 		// Zámok pre logovanie – zabezpečí, že viac vlákien nebude zapisovať naraz
 		private readonly object _logLock = new object();
 
-		// Objekt, ktorý číta stream z kamery (ESP32-CAM)
-		private VideoCapture? _cap;
+		// Aktuálna HTTP odpoveď MJPEG streamu – udržiavame referenciu pre správny Dispose pri StopCapture.
+		// null = stream nebeží. Prístup len z capture threadu alebo pod _streamLock.
+		private HttpResponseMessage? _mjpegResponse;
+
+		// Zámok pre _mjpegResponse – ochrana pred súbehom StopCapture (UI thread) a capture loop (bg thread).
+		private readonly object _streamLock = new object();
 
 		// CancellationTokenSource slúži na zastavenie bežiaceho vlákna so streamom
 		private CancellationTokenSource? _cts;
@@ -69,11 +77,6 @@ namespace GUIVideoProcessing
 		// ROI výrezy z originálneho frame (bez resize)
 		private Mat? _lastRoi;
 
-		// Posledný "up" (resize-ovaná verzia ROI) – uložený kvôli tlačidlu VIEW
-		//private Mat? _lastUp;
-		// Upscaled ROI (to, čo sa posiela do Pipeline)
-		private Mat? _lastUp;
-
 		// Posledný "contrast" po CLAHE – užitočné na debug (prečo threshold dáva šum).
 		private Mat? _lastContrast;
 
@@ -85,11 +88,6 @@ namespace GUIVideoProcessing
 		// Voliteľne: drž si aj výsledky separátne (ak ich chceš neskôr zobrazovať pre každú ROI zvlášť)
 		private Mat? _lastCleaned;
 
-		// Posledná "matrix" – resized verzia cleaned na NxN (16x16, 32x32, 64x64, 128x128).
-		// Používa sa na prípravu vstupu pre neurónové siete alebo ďalšie spracovanie.
-		//private Mat? _lastMatrix;
-		private Mat? _lastMatrix;
-
 		// Posledná dekódovaná hodnota z 7-seg displeja (napr. 70).
 		// Nullable int:
 		/// - null = dekódovanie zlyhalo (neboli nájdené číslice / segmenty sú nečitateľné)
@@ -99,8 +97,6 @@ namespace GUIVideoProcessing
 		// Posledný dekódovaný text (napr. "70") – hodí sa pre debug,
 		// ak chceš neskôr zobraziť priamo string (napr. aj s '?' pri chybe).
 		private string? _lastSevenSegText = null;
-
-		private DigitSegmentation? _digitSeg;
 
 		// ONNX Digit Recognizer – rozpoznávanie číslic pomocou natrénovanej neurónovej siete.
 		private OnnxDigitRecognizer? _onnxRecognizer;
@@ -190,14 +186,6 @@ namespace GUIVideoProcessing
 			// ROI výška v percentách (0-100)
 			nudHeight.Value = _settings.ROIHeight;
 
-			// Nastaví Resize Scale (faktor zväčšenia ROI) z Settings.json
-			// Min: 1, Max: 5, Increment: 0.1 (desatinné hodnoty povolené)
-			nudResize.Minimum = 1;
-			nudResize.Maximum = 5;
-			nudResize.Increment = 0.1M; // 0.1 krok pre jemnejšie nastavenie (bolo 2)
-			nudResize.DecimalPlaces = 1; // Zobrazí desatinné miesto (napr. 2.0)
-			nudResize.Value = (decimal)_settings.ResizeScale; // Načíta z Settings (default: 2.0)
-
 			// ========================= ADAPTIVE THRESHOLD PARAMETRE Z SETTINGS =========================
 
 			// blockSize musí byť nepárne (napr. 15 optimalizované pre číslice)
@@ -282,16 +270,15 @@ namespace GUIVideoProcessing
 			lblLedValue.Text = $"Intenzita: {trkLedIntensity.Value}";
 			chkLed.Checked = _settings.LedIntensity > 0;
 
+			// ========================= PARAMETRE KAMERY Z SETTINGS =========================
+			// Zobrazí nakonfigurované hodnoty parametrov kamery (len čítanie).
+			lblCamResolution.Text = $"Rozlíšenie: {FramesizeToString(_settings.CamFramesize)}";
+			lblCamBrightness.Text = $"Jas: {_settings.CamBrightness}";
+			lblCamContrast.Text   = $"Kontrast: {_settings.CamContrast}";
+			lblCamSaturation.Text = $"Saturácia: {_settings.CamSaturation}";
+
 			// Na začiatku je tlačidlo Stop zakázané – stream nebeží
 			btnStop.Enabled = false;
-
-			// Inicializácia ComboBoxu pre ChangeMatrix - nastaví default hodnotu na 32x32
-			// Položky (16, 32, 64, 128) sú už pridané v Designer.cs cez Items.AddRange()
-			// Vyberieme druhú položku (index 1) = 32
-			if (cboChangeMatrix.Items.Count > 0)
-			{
-				cboChangeMatrix.SelectedIndex = 1; // 32 (index: 0=16, 1=32, 2=64, 3=128)
-			}
 
 			// Validácia START tlačidla – ak je ComboBox prázdny (žiadne IP adresy), zakáž START.
 			// Používateľ nemá z čoho vybrať stream URL, takže spustenie by zlyhalo.
@@ -314,8 +301,6 @@ namespace GUIVideoProcessing
 			// Volané raz pri štarte – Directory.CreateDirectory je idempotentné (ak priečinok
 			// už existuje, nerobí nič a nechybuje).
 			EnsureExampleDirectories();
-
-			_digitSeg = new DigitSegmentation(_logger);
 
 			// ========================= ONNX DIGIT RECOGNIZER =========================
 			_onnxRecognizer = new OnnxDigitRecognizer(_logger);
@@ -407,6 +392,9 @@ namespace GUIVideoProcessing
 			// Vytvor nový CancellationTokenSource pre toto spustenie
 			_cts = new CancellationTokenSource();
 
+			// Pošli parametre kamery (framesize, brightness, contrast, saturation) pred štartom streamu
+			await SendCameraSettings();
+
 			// Spusť capture loop v samostatnej úlohe, aby si neblokoval UI vlákno
 			await Task.Run(() => CaptureLoop(_cts.Token));
 		}
@@ -432,8 +420,6 @@ namespace GUIVideoProcessing
 				_settings.ROIWidth = (int)GetNudValueSafe(nudWidth);
 				_settings.ROIHeight = (int)GetNudValueSafe(nudHeight);
 
-				// Resize scale (desatinné číslo)
-				_settings.ResizeScale = (double)GetNudValueSafe(nudResize);
 
 				// Bilateral Filter parametre
 				_settings.BilateralD = (int)GetNudValueSafe(nudBilateralD);
@@ -727,6 +713,85 @@ namespace GUIVideoProcessing
 		}
 
 		/// <summary>
+		/// Odošle parametre kamery (framesize, brightness, contrast, saturation) na ESP32-CAM.
+		/// Volá sa jednorazovo pri štarte streamu (btnStart_Click).
+		/// Endpoint: http://{IP}/control?var={name}&val={value}
+		/// </summary>
+		private async Task SendCameraSettings()
+		{
+			try
+			{
+				string? streamUrl = null;
+				if (InvokeRequired)
+					streamUrl = (string?)Invoke(() => cboUrl.SelectedItem?.ToString());
+				else
+					streamUrl = cboUrl.SelectedItem?.ToString();
+
+				if (string.IsNullOrEmpty(streamUrl))
+				{
+					_logger?.Warn("CAM: Žiadna URL nie je vybraná.");
+					return;
+				}
+
+				var uri = new Uri(streamUrl);
+				string baseUrl = $"http://{uri.Host}/control";
+
+				var cmds = new (string Var, int Val)[]
+				{
+					("framesize",  _settings.CamFramesize),
+					("brightness", _settings.CamBrightness),
+					("contrast",   _settings.CamContrast),
+					("saturation", _settings.CamSaturation),
+				};
+
+				foreach (var cmd in cmds)
+				{
+					string url = $"{baseUrl}?var={cmd.Var}&val={cmd.Val}";
+					try
+					{
+						var response = await _httpClient.GetAsync(url);
+						if (response.IsSuccessStatusCode)
+							_logger?.Info($"CAM: {cmd.Var}={cmd.Val} OK");
+						else
+							_logger?.Warn($"CAM: {cmd.Var}={cmd.Val} HTTP {(int)response.StatusCode}");
+					}
+					catch (Exception ex)
+					{
+						_logger?.Warn($"CAM: {cmd.Var}={cmd.Val} chyba – {ex.Message}");
+					}
+				}
+			}
+			catch (Exception ex)
+			{
+				_logger?.Error($"CAM: Neočakávaná chyba – {ex.Message}");
+			}
+		}
+
+		/// <summary>
+		/// Vráti čitateľný názov rozlíšenia pre daný framesize index (ESP32-CAM).
+		/// </summary>
+		// POZNAMKA: mapovanie framesize -> nazov zavisi od verzie firmware ESP32-CAM.
+		// Tato tabulka zodpoveda firmware pouzitemu pri vyvoji (13 = HD 1280x720).
+		private static string FramesizeToString(int framesize) => framesize switch
+		{
+			0  => "96×96",
+			1  => "QQVGA (160×120)",
+			2  => "QCIF (176×144)",
+			3  => "HQVGA (240×176)",
+			4  => "240×240",
+			5  => "QVGA (320×240)",
+			6  => "CIF (400×296)",
+			7  => "HVGA (480×320)",
+			8  => "VGA (640×480)",
+			9  => "SVGA (800×600)",
+			10 => "XGA (1024×768)",
+			11 => "SXGA (1280×1024)",
+			12 => "UXGA (1600×1200)",
+			13 => "HD (1280×720)",
+			_  => $"#{framesize}",
+		};
+
+		/// <summary>
 		/// Event handler pre CheckBox LED ON/OFF.
 		/// Ak sa zaškrtne, pošle aktuálnu intenzitu z TrackBar-u (min 1).
 		/// Ak sa odškrtne, pošle 0 (LED vypnutá).
@@ -836,70 +901,6 @@ namespace GUIVideoProcessing
 			}
 		}
 
-		// Obsluha tlačidla VIEW – zobrazí zväčšený ROI ("up") v OpenCV okne
-		private void btnView_Click(object sender, EventArgs e)
-		{
-			// Lokálna referencia na kópiu zväčšeného ROI (up).
-			// Robíme kópiu preto, aby sme nikdy neposielali zdieľaný _lastUp priamo do ImShow,
-			// lebo _lastUp sa môže na capture threade práve meniť alebo disposeovať.
-			Mat upCopy = null;
-
-			// Uzamkneme zámok, aby capture thread nemohol v tom istom čase:
-			// - urobiť _lastUp.Dispose()
-			// - prepísať _lastUp novým Mat
-			// - alebo doň ešte len zapisovať výsledok Resize.
-			// Toto je kritické proti race-condition chybám typu "_dims".
-			lock (_roiLock)
-			{
-				// Ak _lastUp ešte nikdy nebol vytvorený (napr. ešte nebežal ProcessFrame),
-				// nemáme čo zobrazovať → bezpečne skončíme.
-				if (_lastUp == null)
-				{
-					// Zobrazíme informáciu používateľovi (aby vedel, prečo sa nič nedeje).
-					MessageBox.Show("UP (zväčšený ROI) ešte nebol vytvorený.");
-					// Ukončíme handler tlačidla.
-					return;
-				}
-
-				// Ak _lastUp existuje, ale je prázdny Mat (nemá dáta),
-				// ImShow by mohol spadnúť na empty src alebo na interný assert.
-				if (_lastUp.Empty())
-				{
-					// Informujeme používateľa, že up je prázdny.
-					MessageBox.Show("UP (zväčšený ROI) je prázdny.");
-					// Ukončíme handler tlačidla.
-					return;
-				}
-
-				// Vytvoríme Clone() z _lastUp, aby sme získali úplne nezávislý Mat s vlastnou pamäťou.
-				// Po uvoľnení locku môže capture thread _lastUp pokojne meniť alebo disposeovať,
-				// ale upCopy ostane stabilný a bezpečný pre ImShow.
-				upCopy = _lastUp.Clone();
-			} // Tu sa lock uvoľní – ďalej pracujeme už len s lokálnou kópiou.
-
-			try
-			{
-				// Extra defensívna kontrola:
-				// Aj keď by Clone() nemal zlyhať, radšej overíme, že kópia je platná.
-				if (upCopy == null || upCopy.Empty())
-				{
-					// Ak by bola kópia neplatná/prázdna, nevoláme ImShow a nevznikne pád.
-					MessageBox.Show("Nepodarilo sa vytvoriť kópiu UP obrázka.");
-					// Skončíme bezpečne.
-					return;
-				}
-
-				// Zobrazí upCopy v OpenCV okne s názvom "up".
-				// Používame upCopy (nie _lastUp), aby sme eliminovali súbeh (race-condition).
-				Cv2.ImShow("up", upCopy);
-			}
-			finally
-			{
-				// Uvoľníme unmanaged pamäť lokálnej kópie upCopy,
-				// aby nevznikal memory leak pri opakovanom kliknutí na tlačidlo VIEW.
-				upCopy?.Dispose();
-			}
-		}
 
 		// Obsluha debug tlačidla CONTRAST – zobrazí _lastContrast v OpenCV okne
 		private void btnDebugContrast_Click(object sender, EventArgs e)
@@ -1020,116 +1021,6 @@ namespace GUIVideoProcessing
 			finally
 			{
 				cleanedCopy?.Dispose();
-			}
-		}
-
-		// Obsluha tlačidla Test Segmentation - testuje segmentáciu číslic z cleaned image
-		// KAPITOLA 5: Digit Segmentation
-		private void btnTestSegmentation_Click(object sender, EventArgs e)
-		{
-			Mat cleanedCopy = null;
-			List<Mat> digits = null;
-
-			try
-			{
-				// 1. Získaj kópiu _lastCleaned (thread-safe)
-				lock (_roiLock)
-				{
-					if (_lastCleaned == null)
-					{
-						MessageBox.Show("CLEANED ešte nebol vytvorený. Spustite stream najprv.");
-						return;
-					}
-
-					if (_lastCleaned.Empty())
-					{
-						MessageBox.Show("CLEANED je prázdny.");
-						return;
-					}
-
-					cleanedCopy = _lastCleaned.Clone();
-				}
-
-				// 2. Spusti segmentáciu číslic
-				_logger.Info("=== TEST SEGMENTATION START ===");
-				digits = _digitSeg?.ExtractDigits(cleanedCopy) ?? new List<Mat>();
-				_logger.Info($"=== TEST SEGMENTATION END - Extracted {digits.Count} digits ===");
-
-				// 3. Validácia výsledku
-				if (digits == null || digits.Count == 0)
-				{
-					MessageBox.Show(
-						"Segmentácia nenašla žiadne číslice.\n\n" +
-						"Možné príčiny:\n" +
-						"- ROI neobsahuje číslice\n" +
-						"- Threshold parametre sú zlé (cleaned image je prázdny)\n" +
-						"- minArea je príliš veľká",
-						"Test Segmentation",
-						MessageBoxButtons.OK,
-						MessageBoxIcon.Warning
-					);
-					return;
-				}
-
-				// 4. Zobraz výsledky v OpenCV oknách
-				MessageBox.Show(
-					$"Segmentácia úspešná!\n\n" +
-					$"Počet extrahovaných číslic: {digits.Count}\n\n" +
-					$"Číslice sa zobrazia v OpenCV oknách.\n" +
-					$"Stlačte ľubovoľnú klávesu pre zatvorenie okien.",
-					"Test Segmentation",
-					MessageBoxButtons.OK,
-					MessageBoxIcon.Information
-				);
-
-				// Zobraz cleaned image s bounding rectangles (debug)
-				// Najprv získaj rectangles pre vizualizáciu
-				//CvPoint[][] contours = FindWhiteBlobs(cleanedCopy);
-				//List<CvRect> rectangles = GetBoundingRectangles(contours);
-				//List<CvRect> filtered = FilterContours(contours, rectangles, minArea: 200);
-				//List<CvRect> merged = MergeOverlappingRects(filtered, overlapThreshold: 0.5);
-
-				//// Vykreslí rectangles na cleaned image
-				//Mat debugImage = DrawRectangles(cleanedCopy, merged, new Scalar(128, 128, 128), thickness: 2);
-				//Cv2.ImShow("Debug - Bounding Rectangles", debugImage);
-
-				// Zobraz každú extrahovanú číslicu
-				for (int i = 0; i < digits.Count; i++)
-				{
-					Cv2.ImShow($"Digit {i} (28x28 px)", digits[i]);
-				}
-
-				// Čakaj na stlačenie klávesy
-				Cv2.WaitKey(0);
-
-				// Zatvor všetky OpenCV okná
-				Cv2.DestroyAllWindows();
-
-				// Dispose debug image
-				//debugImage?.Dispose();
-			}
-			catch (Exception ex)
-			{
-				_logger.Error($"Test Segmentation failed: {ex.Message}");
-				MessageBox.Show(
-					$"Chyba pri testovaní segmentácie:\n{ex.Message}",
-					"Chyba",
-					MessageBoxButtons.OK,
-					MessageBoxIcon.Error
-				);
-			}
-			finally
-			{
-				// Cleanup
-				cleanedCopy?.Dispose();
-
-				if (digits != null)
-				{
-					foreach (var digit in digits)
-					{
-						digit?.Dispose();
-					}
-				}
 			}
 		}
 
@@ -1565,12 +1456,13 @@ namespace GUIVideoProcessing
 
 			// Uvoľnenie VideoCapture musí byť thread-safe, aby nedošlo k situácii:
 			// CaptureLoop je v _cap.Read(frame) a súčasne StopCapture volá _cap.Dispose() → AccessViolationException.
-			lock (_capLock) // <-- ZABRAŇUJE súbehu Read() vs Dispose()
+			// Uvoľnie HTTP response pre MJPEG stream.
+			// CancellationToken (_cts.Cancel()) spôsobí OperationCanceledException v stream.ReadAsync(),
+			// čo bezpečne preruší capture loop. Response tu Dispose-neme ako doplńkovú ochranu.
+			lock (_streamLock)
 			{
-				// Ak _cap existuje, uvoľníme natívne zdroje (FFmpeg/OpenCV handle).
-				_cap?.Release(); // <-- korektne “pustí” stream zdroj na natívnej strane
-				_cap?.Dispose(); // <-- uvoľní unmanaged pamäť/handly; bez locku vie rozbiť Read()
-				_cap = null;     // <-- nastaví na null, aby CaptureLoop vedel, že už nemá z čoho čítať
+				_mjpegResponse?.Dispose();
+				_mjpegResponse = null;
 			}
 
 			// ROI a UP sú zdieľané medzi capture threadom (ProcessFrame) a UI threadom (btnRoi/btnView),
@@ -1580,8 +1472,6 @@ namespace GUIVideoProcessing
 				_lastRoi?.Dispose(); // <-- uvoľní unmanaged pamäť ROI
 				_lastRoi = null;     // <-- zruší referenciu, aby bolo jasné, že ROI už neexistuje
 
-				_lastUp?.Dispose();  // <-- uvoľní unmanaged pamäť zväčšeného ROI
-				_lastUp = null;      // <-- zruší referenciu, aby VIEW nemal čo zobrazovať
 
 				_lastContrast?.Dispose();
 				_lastContrast = null;
@@ -1591,11 +1481,6 @@ namespace GUIVideoProcessing
 
 				_lastCleaned?.Dispose();
 				_lastCleaned = null;
-
-				// Uvoľní _lastMatrix (resized verzia cleaned na NxN).
-				// Toto je nový Mat pridaný v Kapitole 3 (ChangeMatrix feature).
-				_lastMatrix?.Dispose();
-				_lastMatrix = null;
 
 				// ========================= UVOĽNENIE LEFT A RIGHT MAT OBJEKTOV =========================
 				// Uvoľníme _lastLeft a _lastRight Mat objekty (ľavá a pravá časť cleaned obrazu).
@@ -1633,14 +1518,6 @@ namespace GUIVideoProcessing
 					picCleaned.Image = null;
 				}
 
-				// Uvoľní obrázok v picMatrix (resized matica NxN).
-				// Nový PictureBox pridaný v Kapitole 3 (ChangeMatrix feature).
-				if (picMatrix.Image != null)
-				{
-					picMatrix.Image.Dispose();
-					picMatrix.Image = null;
-				}
-
 				// ========================= UVOĽNENIE picLeft A picRight IMAGE =========================
 				// Uvoľníme obrázky v picLeft a picRight PictureBoxoch (ľavá a pravá číslica).
 				// Nové PictureBox komponenty pridané pre zobrazenie rozdelených číslic.
@@ -1669,58 +1546,9 @@ namespace GUIVideoProcessing
 		}
 
 
-		/// <summary>
-		/// Bezpečne obnoví VideoCapture objekt, keď stream prestane dodávať snímky.
-		/// Volá sa z CaptureLoop (watchdog).
-		/// </summary>
-		/// <param name="url">URL streamu, ktorú chceme znovu otvoriť</param>
-		private void TryReconnectCapture(string url)
-		{
-			// ========================= VALIDÁCIA VSTUPU =========================
-			// Ak by URL bola prázdna, nemá zmysel robiť reconnect.
-			if (string.IsNullOrWhiteSpace(url))
-			{
-				_logger.Error("TryReconnectCapture(): URL is empty - cannot reconnect.");
-				return;
-			}
-
-			// Reconnect musí byť pod _capLock, aby sa nestalo, že v rovnakom čase:
-			//  - CaptureLoop volá _cap.Read()
-			//  - používateľ klikne STOP (StopCapture robí Dispose)
-			//  - watchdog robí Dispose a vytvára nový _cap
-			lock (_capLock)
-			{
-				try
-				{
-					// ========================= UVOĽNENIE STARÉHO CAPTURE =========================
-					// Starý _cap môže byť v "divnom" stave (napr. stream vypadol).
-					// Preto ho vždy korektne uvoľníme (Release + Dispose).
-					if (_cap != null)
-					{
-						try { _cap.Release(); } catch { /* ignoruj */ }
-						try { _cap.Dispose(); } catch { /* ignoruj */ }
-						_cap = null;
-					}
-
-					// ========================= OTVORENIE NOVÉHO CAPTURE =========================
-					// Vytvoríme nový VideoCapture nad rovnakou URL.
-					_cap = new VideoCapture(url);
-
-					bool opened = _cap.IsOpened();
-					_logger.Info($"TryReconnectCapture(): reconnect done. IsOpened={opened}, url={url}");
-
-					// Poznámka:
-					// Ak opened == false, CaptureLoop bude ďalej bežať, a watchdog skúsi reconnect znova neskôr.
-				}
-				catch (Exception ex)
-				{
-					_logger.Error($"TryReconnectCapture(): reconnect failed. {ex}");
-				}
-			}
-		}
 
 
-		/// <summary>
+				/// <summary>
 		/// Hlavná slučka, ktorá číta stream z kamery a spracováva jednotlivé snímky
 		/// </summary>
 		/// <param name="token"></param>
@@ -1731,350 +1559,271 @@ namespace GUIVideoProcessing
 				_logger.Info("CaptureLoop method invoke");
 
 				// Prečíta vybranú URL adresu z ComboBoxu (cboUrl) thread-safe spôsobom.
-				// Keďže CaptureLoop beží na background threade, musíme použiť Invoke pre prístup k UI kontrolke.
-				// Invoke zabezpečí, že čítanie prebehne na UI threade (bezpečné pre Windows Forms).
 				string selectedUrl = (string)Invoke(new Func<string>(() =>
 				{
-					// Vráti vybranú položku z ComboBoxu ako string.
-					// SelectedItem obsahuje IP adresu (napr. "http://192.168.50.96:81/stream").
-					// Ak by nebolo nič vybrané, SelectedItem by bolo null – ale to je ošetrené validáciou (START je zakázaný).
 					return cboUrl.SelectedItem?.ToString() ?? "";
 				}));
 
-				// Vytvorí VideoCapture s URL adresou vybranou z ComboBoxu.
-				// selectedUrl obsahuje IP adresu stream servera (ESP32-CAM).
-				_cap = new VideoCapture(selectedUrl);
-
-				// Loguje, ktorú stream URL sa pokúša otvoriť (užitočné pre debugging pripojenia).
-				_logger.Info($"Opening stream: {selectedUrl}");
-
-				// Overí, či sa stream podarilo otvoriť
-				if (!_cap.IsOpened())
+				if (string.IsNullOrWhiteSpace(selectedUrl))
 				{
-					// Ak nie, zobrazí správu a zastaví capture
-					_logger.Error("Failed to open stream (VideoCapture.IsOpened() == false)");
-					MessageBox.Show("Nepodarilo sa otvoriť stream.");
+					_logger.Error("CaptureLoop: URL is empty.");
 					StopCapture();
 					return;
 				}
 
-				// Vytvorí Mat pre aktuálny snímok (frame)
-				using var frame = new Mat();
+				_logger.Info($"Opening MJPEG stream: {selectedUrl}");
 
-				// ========================= WATCHDOG PRE STREAM (AUTO-RECONNECT) =========================
-				// Tento blok rieši situáciu, keď IP/MJPEG stream (napr. ESP32-CAM) po dlhšom čase prestane dodávať dáta.
-				// Typické správanie:
-				//  - VideoCapture.Read() začne vracať false
-				//  - alebo vracia prázdny Mat (frame.Empty() == true)
-				// Bez watchdogu by sme robili len "continue" a aplikácia by sa mohla tváriť, že je "zaseknutá".
-				//
-				// lastGoodFrameUtc:
-				//  - čas posledného VALIDNÉHO frame (ok == true && !frame.Empty()).
-				// consecutiveReadFailures:
-				//  - počet zlyhaní čítania po sebe (Read() == false alebo frame.Empty()).
-				//
-				// noFrameTimeout:
-				//  - ak nepríde validný frame dlhšie než tento čas, spravíme reconnect.
-				// failureThreshold:
-				//  - ak je príliš veľa failov po sebe, spravíme reconnect aj bez čakania na timeout.
-				// failedReadSleepMs:
-				//  - krátka pauza pri failoch, aby sa nepálilo CPU v rýchlom fail-loop-e.
-				DateTime lastGoodFrameUtc = DateTime.UtcNow;
-				int consecutiveReadFailures = 0;
+				// ========================= WATCHDOG PARAMETRE =========================
 				int totalReconnectAttempts = 0;
-				const int maxReconnectAttempts = 50;
-				TimeSpan noFrameTimeout = TimeSpan.FromSeconds(5);
-				int failureThreshold = 50;
-				int failedReadSleepMs = 10;
+				int connectTimeoutSec = _settings.MjpegConnectTimeoutSec;
+				int frameTimeoutSec   = _settings.MjpegFrameTimeoutSec;
+				int backoffMaxSec     = _settings.MjpegReconnectBackoffMaxSec;
+				int backoffMaxMs      = backoffMaxSec * 1000;
+				DateTime? disconnectedAt = null; // čas kedy naposledy vypadol stream
 
+				// ========================= BUFFER PRE MJPEG PARSING =========================
+				const int READ_BUF_SIZE = 65536;        // 64 KB – veľkosť jednej čícívacej dávky
+				const int ACC_BUF_SIZE  = 4 * 1024 * 1024; // 4 MB – max akumulácia (rámec ~50-150 KB)
+				var readBuf = new byte[READ_BUF_SIZE];
+				var accBuf  = new byte[ACC_BUF_SIZE];
+				int accLen  = 0;
 
-				// Nekonečná slučka – beží, kým nedostane Cancel
+				// ========================= VONKAJŠIA RECONNECT SLUČKA =========================
+				// Každé "continue" v tejto slučke = nový pokus o pripojenie.
 				while (!token.IsCancellationRequested)
 				{
-					// Premenná, do ktorej si uložíme výsledok čítania (true = frame načítaný).
-					bool ok; // <-- používame lokálnu premennú, aby sme po locku nemuseli znovu siahať na _cap
-
-					// Čítanie z _cap musí byť pod _capLock, aby StopCapture nemohol spraviť Dispose()
-					// presne v momente, keď prebieha Read() – to je zdroj AccessViolationException.
-					//
-					// ROZŠÍRENIE (WATCHDOG):
-					// Okrem thread-safety tu riešime aj stav, keď stream prestane dodávať snímky.
-					// Vtedy Read() vracia false alebo frame.Empty() a bez watchdogu by sme len donekonečna "continue".
-					lock (_capLock) // <-- ZABRAŇUJE súbehu Read() vs Dispose()
+					// === BACKOFF PRED RECONNECTOM (preskakujeme pri 1. pokuse) ===
+					// Stream sa pokúša donekonečna – zastaví ho len STOP.
+					if (totalReconnectAttempts > 0)
 					{
-						// Ak už bol _cap medzičasom zastavený (StopCapture nastavil _cap = null),
-						// nemáme čo čítať – bezpečne ukončíme slučku.
-						if (_cap == null)
-						{
-							ok = false;
-						}
-						else if (!_cap.IsOpened())
-						{
-							// Stream nie je otvorený – vrátime ok=false a necháme watchdog rozhodnúť, čo ďalej.
-							ok = false;
-						}
-						else
-						{
-							// Reálne načítanie ďalšieho frame z natívneho streamu.
-							ok = _cap.Read(frame); // <-- natívna operácia; musí byť chránená lockom
-						}
+					int backoffSec = Math.Min(totalReconnectAttempts, backoffMaxSec);
+					int backoffMs  = backoffSec * 1000;
+					string downtimeStr = disconnectedAt.HasValue
+					? $", výpadok trvá {(DateTime.UtcNow - disconnectedAt.Value).TotalSeconds:F0}s"
+					: "";
+					_logger.Warn($"STREAM [pokus #{totalReconnectAttempts}]: Čakám {backoffSec}s pred ďalším pokusom (max={backoffMaxSec}s{downtimeStr}).");
+					// Backoff sleep – preruší sa okamžite ak stlačíte STOP
+					if (token.WaitHandle.WaitOne(backoffMs))
+					{
+					_logger.Info("STREAM: STOP prijatý počas čakania na reconnect. Ukončujem.");
+					break;
+					}
 					}
 
-					// ========================= OŠETRENIE CHYBNÉHO / PRÁZDNEHO FRAME =========================
-					// Pri IP/MJPEG streamoch (ESP32-CAM) sa občas stáva, že Read() začne vracať false alebo prázdny frame.
-					// Ak by sme len "continue" bez pauzy, môžeme:
-					//  - zbytočne zaťažiť CPU (rýchla slučka)
-					//  - a hlavne nikdy neobnoviť stream (aplikácia vyzerá, že "zamrzla").
-					if (!ok || frame.Empty())
+					totalReconnectAttempts++;
+					accLen = 0; // reset akumulačného buffera pred každým novým pripojením
+
+					try
 					{
-						consecutiveReadFailures++;
+						// === PRIPOJENIE S TIMEOUTOM ===
+						// HttpClient.GetAsync má InfiniteTimeSpan – timeout riadime cez CancellationToken.
+						using var connectCts = CancellationTokenSource.CreateLinkedTokenSource(token);
+						connectCts.CancelAfter(TimeSpan.FromSeconds(connectTimeoutSec));
 
-						// Krátka pauza, aby pri výpadku streamu aplikácia nepálila CPU.
-						Thread.Sleep(failedReadSleepMs);
+						_logger.Info($"STREAM [pokus #{totalReconnectAttempts}]: Pripájam sa na {selectedUrl} (connect timeout={connectTimeoutSec}s, frame timeout={frameTimeoutSec}s)...");
 
-						// Ako dlho sme bez validného frame?
-						TimeSpan sinceLastGood = DateTime.UtcNow - lastGoodFrameUtc;
-
-						// WATCHDOG TRIGGER:
-						// 1) veľa failov po sebe
-						// 2) alebo dlhý čas bez validného frame
-						if (consecutiveReadFailures >= failureThreshold || sinceLastGood > noFrameTimeout)
+						HttpResponseMessage response;
+						try
 						{
-							totalReconnectAttempts++;
+							response = _mjpegHttpClient
+								.GetAsync(selectedUrl, HttpCompletionOption.ResponseHeadersRead, connectCts.Token)
+								.GetAwaiter().GetResult();
+						}
+						catch (OperationCanceledException) when (!token.IsCancellationRequested)
+						{
+							_logger.Warn($"MJPEG: Connection timeout after {connectTimeoutSec}s. Will retry.");
+							continue; // vonkajšia slučka – ďalší pokus
+						}
 
-							if (totalReconnectAttempts > maxReconnectAttempts)
+						_logger.Info($"STREAM [pokus #{totalReconnectAttempts}]: Pripojené. HTTP {(int)response.StatusCode} {response.StatusCode}. Čakám na dáta...");
+
+						// Uložíme response pre prípad že StopCapture príde zo UI vlákna
+						lock (_streamLock) { _mjpegResponse = response; }
+
+						using (response)
+						using (var stream = response.Content.ReadAsStreamAsync(token).GetAwaiter().GetResult())
+						{
+							bool receivedFirstFrame = false;
+
+							// === VNUTORNÁ SLUČKA – ČÍTANIE STREAMU ===
+							while (!token.IsCancellationRequested)
 							{
-								_logger.Error(
-									$"Stream watchdog: max reconnect attempts ({maxReconnectAttempts}) reached. Stopping capture.");
-								StopCapture();
-								return;
-							}
+								// Per-frame timeout: ak za frameTimeoutSec nepríde žiadny bajt → reconnect
+								using var frameCts = CancellationTokenSource.CreateLinkedTokenSource(token);
+								frameCts.CancelAfter(TimeSpan.FromSeconds(frameTimeoutSec));
 
-							// Exponenciálny backoff: čakanie pred reconnectom (max 30s).
-							int backoffMs = Math.Min(1000 * totalReconnectAttempts, 30000);
+								int bytesRead;
+								try
+								{
+									bytesRead = stream.ReadAsync(readBuf, 0, READ_BUF_SIZE, frameCts.Token)
+										.GetAwaiter().GetResult();
+								}
+								catch (OperationCanceledException) when (!token.IsCancellationRequested)
+								{
+								if (!disconnectedAt.HasValue) disconnectedAt = DateTime.UtcNow;
+								_logger.Warn($"STREAM: Za {frameTimeoutSec}s neprišli žiadne dáta (frame timeout). Výpadok od {disconnectedAt.Value:HH:mm:ss}. Restartujem spojenie.");
+								break; // vnútorná slučka → vonkajšia slučka → reconnect
+								}
 
-							_logger.Warn(
-								$"Stream watchdog triggered: failures={consecutiveReadFailures}, " +
-								$"sinceLastGood={sinceLastGood.TotalSeconds:0.0}s, " +
-								$"attempt={totalReconnectAttempts}/{maxReconnectAttempts}. " +
-								$"Reconnecting after {backoffMs}ms backoff...");
+								if (bytesRead == 0)
+								{
+								if (!disconnectedAt.HasValue) disconnectedAt = DateTime.UtcNow;
+								_logger.Warn($"STREAM: Server uzavrel spojenie (bytesRead=0). Výpadok od {disconnectedAt.Value:HH:mm:ss}. Restartujem spojenie.");
+								break;
+								}
 
-							Thread.Sleep(backoffMs);
+								// Pridaj načítané bajty do akumulačného buffera
+								if (accLen + bytesRead > ACC_BUF_SIZE)
+								{
+									// Ochrana pred pretečením – malo by sa stávať len pri extrémnych podmienkach
+									_logger.Warn("MJPEG: Accumulation buffer overflow – resetting buffer.");
+									accLen = 0;
+								}
+								Array.Copy(readBuf, 0, accBuf, accLen, bytesRead);
+								accLen += bytesRead;
 
-							// Reconnect: bezpečne zrušíme starý VideoCapture a otvoríme nový s rovnakou URL.
-							TryReconnectCapture(selectedUrl);
+								// === EXTRAKCIA JPEG RÁMCOV Z BUFFERA ===
+								// JPEG vždy začína: 0xFF 0xD8 0xFF (SOI + prvý marker)
+								// JPEG vždy končí:  0xFF 0xD9 (EOI)
+								while (true)
+								{
+									int jpegStart = MjpegFindSOI(accBuf, accLen);
+									if (jpegStart < 0)
+									{
+										accLen = 0; // žiadny JPEG začiatok, zahodíme všetko
+										break;
+									}
 
-							// Reset watchdog stavu po reconnecte (aby sme sa nehneď neodpálili znova).
-							consecutiveReadFailures = 0;
-							lastGoodFrameUtc = DateTime.UtcNow;
-						}
+									int jpegEnd = MjpegFindEOI(accBuf, jpegStart + 3, accLen);
+									if (jpegEnd < 0)
+									{
+										// JPEG ešte nie je kompletný – ponecháme od jpegStart a čakáme na ďalšie bajty
+										if (jpegStart > 0)
+										{
+											Array.Copy(accBuf, jpegStart, accBuf, 0, accLen - jpegStart);
+											accLen -= jpegStart;
+										}
+										break;
+									}
 
-						continue;
+									// Kompletný JPEG nájdený: jpegStart .. jpegEnd+2
+									int jpegLen = jpegEnd - jpegStart + 2; // +2 pre 0xFF 0xD9
+									var jpegBytes = new byte[jpegLen];
+									Array.Copy(accBuf, jpegStart, jpegBytes, 0, jpegLen);
+
+									// Odstráň spracované bajty z buffera (posun doľava)
+									int consumed = jpegEnd + 2;
+									if (consumed < accLen)
+										Array.Copy(accBuf, consumed, accBuf, 0, accLen - consumed);
+									accLen -= consumed;
+									if (accLen < 0) accLen = 0;
+
+									// Dekóduj JPEG bajty → OpenCV Mat
+									using var frame = Cv2.ImDecode(jpegBytes, ImreadModes.Color);
+									if (frame == null || frame.Empty()) continue;
+
+									// Prvý úspešný frame → reset reconnect počítadla
+									if (!receivedFirstFrame)
+									{
+									receivedFirstFrame = true;
+									int prevAttempts = totalReconnectAttempts;
+									totalReconnectAttempts = 0;
+									if (disconnectedAt.HasValue)
+									{
+									double downtimeSec = (DateTime.UtcNow - disconnectedAt.Value).TotalSeconds;
+									_logger.Info($"STREAM: Stream OBNOVENÝ po {prevAttempts} pokus(och), výpadok trval {downtimeSec:F0}s.");
+									disconnectedAt = null;
+									}
+									else
+									{
+									_logger.Info($"STREAM [pokus #{prevAttempts}]: Prvý frame prijatý – stream aktívny.");
+									}
+									}
+
+									// ========================= SPRACOVANIE FRAME (rovnaké ako predtým) =========================
+									using Mat display = ProcessFrame(frame);
+									Pipeline();
+
+									// Premeň display na Bitmap pre GUI (ľavý obraz – frame s ROI)
+									using Bitmap bmpFrame = BitmapConverter.ToBitmap(display);
+
+									// Zoberieme snapshoty zdieľaných Mat objektov pod lockom (thread-safe clone)
+									Bitmap bmpCleaned = null;
+									Bitmap bmpLeft    = null;
+									Bitmap bmpRight   = null;
+
+									Mat cleanedCopy = null;
+									Mat leftCopy    = null;
+									Mat rightCopy   = null;
+
+									lock (_roiLock)
+									{
+										if (_lastCleaned != null && !_lastCleaned.Empty()) cleanedCopy = _lastCleaned.Clone();
+										if (_lastLeft    != null && !_lastLeft.Empty())    leftCopy    = _lastLeft.Clone();
+										if (_lastRight   != null && !_lastRight.Empty())   rightCopy   = _lastRight.Clone();
+									}
+
+									try { if (cleanedCopy != null) bmpCleaned = BitmapConverter.ToBitmap(cleanedCopy); } finally { cleanedCopy?.Dispose(); }
+									try { if (leftCopy    != null) bmpLeft    = BitmapConverter.ToBitmap(leftCopy);    } finally { leftCopy?.Dispose();    }
+									try { if (rightCopy   != null) bmpRight   = BitmapConverter.ToBitmap(rightCopy);   } finally { rightCopy?.Dispose();   }
+
+									// UI update cez Invoke
+									Invoke(new Action(() =>
+									{
+										picFrame.Image?.Dispose();
+										picFrame.Image = (Bitmap)bmpFrame.Clone();
+										if (bmpCleaned != null) { picCleaned.Image?.Dispose(); picCleaned.Image = bmpCleaned; }
+										if (bmpLeft    != null) { picLeft.Image?.Dispose();    picLeft.Image    = bmpLeft;    }
+										if (bmpRight   != null) { picRight.Image?.Dispose();   picRight.Image   = bmpRight;   }
+									}));
+								} // while JPEG extraction
+							} // while inner stream read
+						} // using stream + response
+
+						// Uvoľníme referenciu na response po zatvorení bloku
+						lock (_streamLock) { _mjpegResponse = null; }
 					}
-
-					// ========================= VALIDNÝ FRAME – RESET WATCHDOG =========================
-					consecutiveReadFailures = 0;
-					totalReconnectAttempts = 0; // Úspešný frame = reset reconnect počítadla
-					lastGoodFrameUtc = DateTime.UtcNow;
-
-
-					// Spracuje frame – vypočíta ROI, uloží _lastRoi a vráti display s nakresleným ROI obdĺžnikom.
-					using Mat display = ProcessFrame(frame);
-
-					// HNEĎ POTOM vytvorí/aktualizuje _lastUp zo snapshotu _lastRoi.
-					// Up() je thread-safe a používa Clone + lock, takže je bezpečné aj pri bežiacom streame.
-					Up();
-
-					// 3) ========================= NOVÉ: spusti CLAHE + threshold + cleaning pipeline =========================
-					// Pipeline číta _lastUp, spraví spracovanie a uloží výsledok do _lastCleaned.
-					Pipeline();
-
-					// Premeň display na Bitmap pre GUI (ľavý obraz – frame s ROI)
-					using Bitmap bmpFrame = BitmapConverter.ToBitmap(display);
-
-					// Zober kópiu cleaned a sprav z toho Bitmap
-					Bitmap bmpCleaned = null;
-
-					// Zoberieme snapshot _lastCleaned pod lockom (clone), aby sme nikdy nekonvertovali zdieľaný Mat.
-					Mat cleanedCopy = null;
-
-					lock (_roiLock)
+					catch (OperationCanceledException) when (token.IsCancellationRequested)
 					{
-						if (_lastCleaned != null && !_lastCleaned.Empty())
-						{
-							cleanedCopy = _lastCleaned.Clone();
-						}
+						break; // používateľ klikol STOP – ukončíme čisto
 					}
-
-					// Ak máme cleanedCopy, prevedieme ho na Bitmap mimo locku.
-					if (cleanedCopy != null)
+					catch (Exception ex) when (!token.IsCancellationRequested)
 					{
-						try
-						{
-							bmpCleaned = BitmapConverter.ToBitmap(cleanedCopy);
-						}
-						finally
-						{
-							cleanedCopy.Dispose();
-						}
+						if (!disconnectedAt.HasValue) disconnectedAt = DateTime.UtcNow;
+						_logger.Warn($"STREAM: Chyba [{ex.GetType().Name}]: {ex.Message}. Výpadok od {disconnectedAt.Value:HH:mm:ss}. Restartujem spojenie.");
+						// vonkajšia slučka sa pokúsi znova
 					}
-
-					// ========================= NOVÉ: Zober kópiu matrix a sprav z toho Bitmap =========================
-					// Rovnaký pattern ako pre cleaned – thread-safe prístup cez Clone.
-					Bitmap bmpMatrix = null;
-
-					// Zoberieme snapshot _lastMatrix pod lockom (clone), aby sme nikdy nekonvertovali zdieľaný Mat.
-					Mat matrixCopy = null;
-
-					lock (_roiLock)
-					{
-						// Ak _lastMatrix existuje a nie je prázdny, spravíme kópiu.
-						if (_lastMatrix != null && !_lastMatrix.Empty())
-						{
-							matrixCopy = _lastMatrix.Clone();
-						}
-					}
-
-					// Ak máme matrixCopy, prevedieme ho na Bitmap mimo locku.
-					if (matrixCopy != null)
-					{
-						try
-						{
-							// BitmapConverter.ToBitmap() konvertuje Mat → Bitmap (GDI+).
-							// Matrix je malý (napr. 32x32), ale PictureBox ho zväčší cez Zoom mode.
-							bmpMatrix = BitmapConverter.ToBitmap(matrixCopy);
-						}
-						finally
-						{
-							// Uvoľníme lokálnu kópiu matrixCopy (už ju nepotrebujeme).
-							matrixCopy.Dispose();
-						}
-					}
-
-					// ========================= NOVÉ: Zober kópie Left a Right a sprav z toho Bitmap =========================
-					// Thread-safe prístup k _lastLeft a _lastRight pomocou Clone pod _roiLock.
-					// Vytvoríme bitmapy pre picLeft a picRight PictureBox komponenty.
-
-					Bitmap bmpLeft = null;
-					Bitmap bmpRight = null;
-
-					// Zoberieme snapshot _lastLeft a _lastRight pod lockom (clone)
-					Mat leftCopy = null;
-					Mat rightCopy = null;
-
-					lock (_roiLock)
-					{
-						// Ak _lastLeft existuje a nie je prázdny, spravíme kópiu.
-						if (_lastLeft != null && !_lastLeft.Empty())
-						{
-							leftCopy = _lastLeft.Clone();
-						}
-
-						// Ak _lastRight existuje a nie je prázdny, spravíme kópiu.
-						if (_lastRight != null && !_lastRight.Empty())
-						{
-							rightCopy = _lastRight.Clone();
-						}
-					}
-
-					// Ak máme leftCopy, prevedieme ho na Bitmap mimo locku.
-					if (leftCopy != null)
-					{
-						try
-						{
-							// BitmapConverter.ToBitmap() konvertuje Mat → Bitmap (GDI+).
-							// leftCopy obsahuje ľavú časť cleaned obrazu (prvá číslica).
-							bmpLeft = BitmapConverter.ToBitmap(leftCopy);
-						}
-						finally
-						{
-							// Uvoľníme lokálnu kópiu leftCopy.
-							leftCopy.Dispose();
-						}
-					}
-
-					// Ak máme rightCopy, prevedieme ho na Bitmap mimo locku.
-					if (rightCopy != null)
-					{
-						try
-						{
-							// BitmapConverter.ToBitmap() konvertuje Mat → Bitmap (GDI+).
-							// rightCopy obsahuje pravú časť cleaned obrazu (druhá číslica).
-							bmpRight = BitmapConverter.ToBitmap(rightCopy);
-						}
-						finally
-						{
-							// Uvoľníme lokálnu kópiu rightCopy.
-							rightCopy.Dispose();
-						}
-					}
-
-					// UI update cez Invoke.
-					Invoke(new Action(() =>
-					{
-						// ====== picFrame ======
-						picFrame.Image?.Dispose();
-						picFrame.Image = (Bitmap)bmpFrame.Clone();
-
-						// ====== picCleaned ======
-						// Ak sme dostali cleaned bitmapu, zobrazíme ju.
-						// Ak nie, necháme pôvodný obraz (alebo ho môžeš nulovať).
-						if (bmpCleaned != null)
-						{
-							picCleaned.Image?.Dispose();
-							picCleaned.Image = bmpCleaned; // tu už NEclone, bmpCleaned vlastníme my
-						}
-
-						// ====== picMatrix (NOVÉ) ======
-						// Ak sme dostali matrix bitmapu (resized 16x16, 32x32, 64x64, 128x128), zobrazíme ju.
-						// PictureBox má SizeMode = Zoom, takže malá matica sa zväčší na celý PictureBox.
-						if (bmpMatrix != null)
-						{
-							// Uvoľníme starý obrázok v picMatrix (ak existuje).
-							picMatrix.Image?.Dispose();
-							// Nastavíme nový obrázok (bmpMatrix vlastníme my, NEclone).
-							picMatrix.Image = bmpMatrix;
-						}
-
-						// ====== picLeft (NOVÉ - Left digit) ======
-						// Ak sme dostali bmpLeft bitmapu (ľavá časť cleaned obrazu), zobrazíme ju.
-						// bmpLeft obsahuje prvú číslicu (ľavú časť cleaned obrazu podľa fromLeft parametra).
-						if (bmpLeft != null)
-						{
-							// Uvoľníme starý obrázok v picLeft (ak existuje).
-							picLeft.Image?.Dispose();
-							// Nastavíme nový obrázok (bmpLeft vlastníme my, NEclone).
-							picLeft.Image = bmpLeft;
-						}
-
-						// ====== picRight (NOVÉ - Right digit) ======
-						// Ak sme dostali bmpRight bitmapu (pravá časť cleaned obrazu), zobrazíme ju.
-						// bmpRight obsahuje druhú číslicu (pravú časť cleaned obrazu podľa fromRight parametra).
-						if (bmpRight != null)
-						{
-							// Uvoľníme starý obrázok v picRight (ak existuje).
-							picRight.Image?.Dispose();
-							// Nastavíme nový obrázok (bmpRight vlastníme my, NEclone).
-							picRight.Image = bmpRight;
-						}
-					}));
-
-					// Uvoľní Mat `display` (už ho nepotrebujeme)
-					display.Dispose();
-				}
+				} // while outer reconnect loop
 			}
 			catch (Exception ex)
 			{
-				// log
-				_logger.Error("EXCEPTION: " + ex);
-				// Ak nastane chyba, zobrazí dialóg s textom výnimky
+				_logger.Error("CaptureLoop EXCEPTION: " + ex);
 				MessageBox.Show(ex.Message);
 			}
 			finally
 			{
-				// Pri akomkoľvek ukončení slučky upraceme zdroje
 				StopCapture();
 			}
+		}
+
+				/// <summary>
+		/// Hľadá začiatok JPEG rámca (SOI marker: 0xFF 0xD8 0xFF) v bufferi.
+		/// </summary>
+		private static int MjpegFindSOI(byte[] buf, int len)
+		{
+			for (int i = 0; i < len - 2; i++)
+				if (buf[i] == 0xFF && buf[i + 1] == 0xD8 && buf[i + 2] == 0xFF) return i;
+			return -1;
+		}
+
+		/// <summary>
+		/// Hľadá koniec JPEG rámca (EOI marker: 0xFF 0xD9) v bufferi začínajúc od offset.
+		/// </summary>
+		private static int MjpegFindEOI(byte[] buf, int offset, int len)
+		{
+			for (int i = offset; i < len - 1; i++)
+				if (buf[i] == 0xFF && buf[i + 1] == 0xD9) return i;
+			return -1;
 		}
 
 		/// <summary>
@@ -2256,124 +2005,38 @@ namespace GUIVideoProcessing
 			return display;
 		}
 
-		/// <summary>
-		/// Vytvorí a uloží "up" (zväčšený ROI) do _lastUp.
-		/// Metóda je thread-safe:
-		/// - ROI si zoberie ako lokálnu kópiu (Clone) pod zámkom,
-		/// - Resize spraví mimo zámku,
-		/// - výsledok uloží späť do _lastUp pod zámkom.
-		/// </summary>
-		private void Up()
-		{
-			// Lokálna kópia ROI (snapshot), s ktorou budeme pracovať mimo locku.
-			// Používame ju preto, aby sa nám ROI počas výpočtu Resize nezmenilo/neudisposovalo.
-			Mat roiCopy = null;
-
-			// Lokálny Mat pre výsledok Resize (zväčšený ROI).
-			// Vytvoríme ho až po kontrole ROI a scale.
-			Mat upTemp = null;
-
-			// Bezpečne načítame scale z NumericUpDown (UI control) aj z background threadu.
-			// Toto zabráni cross-thread problémom.
-			double scale = (double)GetNudValueSafe(nudResize);
-
-			// Ochrana: scale musí byť kladné číslo, inak Resize nedáva zmysel (0 alebo záporné by mohlo spadnúť).
-			if (scale <= 0)
-			{
-				// Ak by bolo scale neplatné, nastavíme konzervatívne 1 (žiadne zväčšenie).
-				scale = 1;
-			}
-
-			// Uzamkneme ROI zámok, aby _lastRoi nebol práve vymenený/Dispose-nutý v ProcessFrame.
-			lock (_roiLock)
-			{
-				// Ak ROI ešte neexistuje, Up nemá z čoho vytvoriť zväčšený obraz – bezpečne skončíme.
-				if (_lastRoi == null)
-					return;
-
-				// Ak ROI existuje, ale je prázdny Mat, Resize by padol na empty src – skončíme.
-				if (_lastRoi.Empty())
-					return;
-
-				// Vytvoríme stabilnú kópiu ROI (Clone), aby sa dalo bezpečne robiť Resize mimo locku.
-				roiCopy = _lastRoi.Clone();
-			} // lock končí – odteraz už nepracujeme so zdieľaným _lastRoi, ale s lokálnym roiCopy.
-
-			try
-			{
-				// Ďalšia ochrana: ak by sa roiCopy nepodarilo vytvoriť alebo bol prázdny, nič nerobíme.
-				if (roiCopy == null || roiCopy.Empty())
-					return;
-
-				// Vytvoríme dočasný Mat pre výsledok Resize.
-				upTemp = new Mat();
-
-				// Resize ROI do upTemp:
-				// - new Size() prázdny znamená: cieľová veľkosť sa vypočíta z fx/fy (scale).
-				// - Cubic interpolácia je kvalitná (užitočné pre OCR), ale je výpočtovo náročnejšia.
-				Cv2.Resize(roiCopy, upTemp, new OpenCvSharp.Size(), scale, scale, InterpolationFlags.Cubic);
-
-				// Ochrana: ak by Resize vyrobil prázdny výsledok (nemalo by sa stať, ale defensívne),
-				// nebudeme ho ukladať do _lastUp.
-				if (upTemp.Empty())
-					return;
-
-				// Teraz bezpečne uložíme výsledok do zdieľaného _lastUp pod zámkom.
-				lock (_roiLock)
-				{
-					// Uvoľníme starý _lastUp (prevencia memory leak).
-					_lastUp?.Dispose();
-
-					// Uložíme nový výsledok; keďže upTemp je náš lokálny Mat, môžeme ho priamo “odovzdať”.
-					// Pozor: po tomto priradení už upTemp NEdisposujeme v finally, aby sme nezrušili _lastUp.
-					_lastUp = upTemp;
-
-					// Nastavíme upTemp na null, aby ho finally blok náhodou neDispose-nul.
-					upTemp = null;
-				}
-			}
-			finally
-			{
-				// Uvoľníme lokálnu kópiu ROI – už ju nepotrebujeme.
-				roiCopy?.Dispose();
-
-				// Ak upTemp nebol uložený do _lastUp (t.j. ostal lokálny), uvoľníme ho tu,
-				// aby nevznikal memory leak pri výnimočných stavoch / early return.
-				upTemp?.Dispose();
-			}
-		}
 
 		/// <summary>
 		/// ========================= CLAHE + threshold + cleaning pipeline (KAPITOLA 4 - OPTIMALIZOVANÝ) =========================
 		/// Pipeline:
-		///   1) vezme _lastUp (zväčšený ROI) ako snapshot,
+		///   1) vezme _lastRoi (ROI) ako snapshot,
 		///   2) spraví grayscale + bilateral (s parametrami z UI/Settings),
 		///   3) CLAHE => contrast (s parametrami z UI/Settings),
 		///   5) AdaptiveThreshold (BinaryInv) => binary (priamo z contrast, bez Gaussian Blur),
 		///   6) Morphology Open + Close (s parametrami z UI/Settings),
 		///   7) ConnectedComponentsWithStats a filtrovanie podľa plochy => cleaned,
 		///   8)  7-SEGMENT DEKÓDOVANIE,
-		///   9) uloží _lastContrast, _lastBinary, _lastCleaned, _lastMatrix (thread-safe).
+		///   9) uloží _lastContrast, _lastBinary, _lastCleaned (thread-safe).
 		///   10) ChangeMatrix - resize cleaned na NxN,
 		/// </summary>
 		private void Pipeline()
 		{
-			// Lokálna kópia "up" (snapshot), aby sa počas spracovania nezmenil/neudisposoval.
+			// Lokálna kópia "roi" (snapshot), aby sa počas spracovania nezmenil/neudisposoval.
 			Mat upCopy = null;
 
-			// Zober snapshot _lastUp pod lockom.
+			// Zober snapshot _lastRoi pod lockom.
 			lock (_roiLock)
 			{
-				// Ak up ešte nie je k dispozícii, pipeline nemá čo robiť.
-				if (_lastUp == null)
+				// Ak ROI ešte nie je k dispozícii, pipeline nemá čo robiť.
+				if (_lastRoi == null)
 					return;
 
-				// Ak je up prázdny, skončíme (inak by padli OpenCV operácie).
-				if (_lastUp.Empty())
+				// Ak je ROI prázdny, skončíme (inak by padli OpenCV operácie).
+				if (_lastRoi.Empty())
 					return;
 
 				// Clone = vlastná pamäť pre bezpečné spracovanie mimo locku.
-				upCopy = _lastUp.Clone();
+				upCopy = _lastRoi.Clone();
 			}
 
 			// Ak sa nepodarilo spraviť kópiu, skončíme.
@@ -2805,46 +2468,6 @@ namespace GUIVideoProcessing
 					_mySqlWriter?.Enqueue(new MySqlWriter.NumRegRecord(entry.TimestampUtc, entry.LeftDigit, entry.RightDigit, entry.Text));
 				}
 
-				// ========================= 10) ChangeMatrix - Resize cleaned na NxN =========================
-				// Tento krok vezme cleaned Mat a zmenší ho na fixnú veľkosť NxN (16x16, 32x32, 64x64 alebo 128x128).
-				// Účel: Príprava vstupu pre neurónové siete alebo pattern matching (normalizovaná veľkosť).
-
-				// Prečítaj vybranú veľkosť matice z ComboBoxu (thread-safe).
-				// GetComboValueSafe() volá Invoke() pre bezpečný prístup z background threadu.
-				int matrixSize = GetComboValueSafe(cboChangeMatrix);
-
-				// Ochrana: ak je matrixSize <= 0 (chyba alebo nič nevybrané), preskočíme resize.
-				// Toto by sa nemalo stať, lebo v konštruktore nastavujeme default hodnotu 32.
-				if (matrixSize > 0)
-				{
-					// Vytvoríme dočasný Mat pre resized výsledok.
-					Mat matrix = new Mat();
-
-					// Resize cleaned Mat na NxN pixelov.
-					// - cleaned: vstupný Mat (čierne pozadie, biele objekty)
-					// - matrix: výstupný Mat (resized)
-					// - new Size(matrixSize, matrixSize): cieľová veľkosť (napr. 32x32)
-					// - InterpolationFlags.Area: najlepšia interpolácia pre zmenšovanie (zachováva detaily)
-					Cv2.Resize(cleaned, matrix, new OpenCvSharp.Size(matrixSize, matrixSize), 0, 0, InterpolationFlags.Area);
-
-					// Uloženie resized matice do _lastMatrix (thread-safe pod _roiLock).
-					lock (_roiLock)
-					{
-						// Uvoľni starý _lastMatrix (ak existuje) aby nevznikol memory leak.
-						_lastMatrix?.Dispose();
-
-						// Ulož nový resized Mat do _lastMatrix.
-						// Matrix už má vlastnú pamäť (nie je SubMat), takže nepotrebujeme Clone().
-						_lastMatrix = matrix;
-
-						// Nastavíme matrix na null, aby ho finally blok náhodou neDispose-nul.
-						// (matrix teraz vlastní _lastMatrix)
-						matrix = null;
-					}
-
-					// Poznámka: matrix?.Dispose() v finally bloku uvoľní matrix len ak nebol priradený do _lastMatrix.
-				}
-
 			}
 			finally
 			{
@@ -2878,34 +2501,6 @@ namespace GUIVideoProcessing
 			{
 				// Tento kód už beží na UI threade, takže čítanie Value je bezpečné.
 				return nud.Value;
-			}));
-		}
-
-		/// <summary>
-		/// Bezpečne prečíta vybranú hodnotu z ComboBoxu aj vtedy, keď je volaná z iného vlákna než UI.
-		/// Používa sa na čítanie cboChangeMatrix z background threadu (CaptureLoop -> Pipeline).
-		/// </summary>
-		/// <param name="cbo">ComboBox, z ktorého chceme prečítať hodnotu</param>
-		/// <returns>Vybratá hodnota ako int (napr. 16, 32, 64, 128), alebo 0 ak nič nie je vybrané</returns>
-		private int GetComboValueSafe(ComboBox cbo)
-		{
-			// Ak sme na UI threade (InvokeRequired == false), môžeme hodnotu čítať priamo.
-			if (!cbo.InvokeRequired)
-			{
-				// Priamy návrat vybranej hodnoty z ComboBoxu.
-				// SelectedItem je object, musíme ho skonvertovať na int.
-				// Ak nie je nič vybrané (SelectedItem == null), vrátime 0.
-				return cbo.SelectedItem != null ? (int)cbo.SelectedItem : 0;
-			}
-
-			// Ak sme na inom (ne-UI) vlákne, musíme si hodnotu vypýtať cez Invoke na UI thread.
-			// Invoke je blokujúci – počká, kým UI thread hodnotu prečíta a vráti.
-			return (int)cbo.Invoke(new Func<int>(() =>
-			{
-				// Tento kód už beží na UI threade, takže čítanie SelectedItem je bezpečné.
-				// SelectedItem je object (môže byť int 16, 32, 64, 128), skonvertujeme na int.
-				// Ochrana: ak by bolo null, vrátime 0.
-				return cbo.SelectedItem != null ? (int)cbo.SelectedItem : 0;
 			}));
 		}
 

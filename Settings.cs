@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
@@ -33,9 +33,6 @@ namespace GUIVideoProcessing
 
 		// Výška ROI v percentách (0-100). Default: 23% výšky frame.
 		public int ROIHeight { get; set; } = 23;
-
-		// Scale factor pre zväčšenie ROI (Resize operácia). Default: 4.0 (štvorné zväčšenie).
-		public double ResizeScale { get; set; } = 4.0;
 
 		// ========================= BILATERAL FILTER PARAMETRE =========================
 		// Bilateral Filter: Odstránenie šumu pri zachovaní hrán (edge-preserving smoothing).
@@ -141,9 +138,6 @@ namespace GUIVideoProcessing
 		// Názov tabuľky, do ktorej sa ukladajú výsledky.
 		public string MySqlTable { get; set; } = "numreg_readings";
 
-		// Timeout pripojenia v sekundách (ak je server nedostupný).
-		public int MySqlConnectTimeoutSeconds { get; set; } = 5;
-
 		// Ako dlho čakať medzi pokusmi o pripojenie, ak MySQL nie je dostupná.
 		public int MySqlReconnectDelaySeconds { get; set; } = 5;
 
@@ -179,6 +173,40 @@ namespace GUIVideoProcessing
 		// Intenzita LED na ESP32-CAM module (0-255). 0 = vypnutá, 255 = maximálny jas.
 		// Posiela sa cez HTTP GET na http://<IP>/control?var=led_intensity&val=<0-255>.
 		public int LedIntensity { get; set; } = 0;
+
+		// ========================= PARAMETRE KAMERY (ESP32-CAM) =========================
+		// Tieto hodnoty sa posielajú na kameru jednorazovo pri štarte (btnStart_Click).
+		// Endpoint: http://<IP>/control?var=<name>&val=<value>
+
+		// Rozlíšenie kamery (framesize). Default: 13 = HD (1280×720) v tomto firmware.
+		// Hodnota závisí od verzie firmware ESP32-CAM – overiť manuálnym výberom v camera web UI.
+		public int CamFramesize { get; set; } = 13;
+
+		// Jas kamery. Rozsah: -2 až +2. Default: 2 (najjasnejší).
+		public int CamBrightness { get; set; } = 2;
+
+		// Kontrast kamery. Rozsah: -2 až +2. Default: 2 (najvyšší kontrast).
+		public int CamContrast { get; set; } = 2;
+
+		// Saturácia kamery. Rozsah: -2 až +2. Default: 2 (najvyššia saturácia).
+		public int CamSaturation { get; set; } = 2;
+
+		// ========================= MJPEG STREAM PARAMETRE =========================
+		// Timeout pre nadviazanie HTTP spojenia so streamom (sekundy).
+		// Ak kamera neodpovie do tohto času, pokus sa vzdá a spustí sa reconnect.
+		// Default: 15 sekúnd – dostatok času pre pomalšiu kameru na LAN.
+		public int MjpegConnectTimeoutSec { get; set; } = 15;
+
+		// Timeout pre príjem dát zo streamu (sekundy).
+		// Ak za tento čas nepríde žiadny bajt zo streamu, považujeme stream za prerušený
+		// a spustíme reconnect. Default: 5 sekúnd.
+		public int MjpegFrameTimeoutSec { get; set; } = 5;
+
+		// Maximálny backoff čas medzi reconnect pokusmi (sekundy).
+		// Backoff rastie lineárne (1s, 2s, ..., 60s) a potom zostáva na maxime.
+		// Stream sa pokúša donekonečna – zastaví ho len operátor tlačidlom STOP.
+		// Default: 60 sekúnd.
+		public int MjpegReconnectBackoffMaxSec { get; set; } = 60;
 
 		/// <summary>
 		/// Konštruktor – inicializuje prázdny list IP adries.

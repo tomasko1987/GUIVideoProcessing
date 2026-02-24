@@ -29,9 +29,6 @@
 		private System.Windows.Forms.Button btnDebugContrast;
 		private System.Windows.Forms.Button btnDebugBinary;
 		private System.Windows.Forms.Button btnDebugCleaned;
-		// Tlačidlo pre testovanie segmentácie číslic (KAPITOLA 5)
-		private System.Windows.Forms.Button btnTestSegmentation;
-
 		// GroupBox pre threshold/cleaning parametre
 		private System.Windows.Forms.GroupBox grpThreshold;
 		private System.Windows.Forms.Label lblBlockSize;
@@ -56,20 +53,6 @@
 		private System.Windows.Forms.Label lblHeight;
 		private System.Windows.Forms.Button btnRoi;
 
-		// GroupBox pre nastavenie Resize
-		private System.Windows.Forms.GroupBox grpResize;
-		private System.Windows.Forms.NumericUpDown nudResize;
-		private System.Windows.Forms.Label lblResize;
-		private System.Windows.Forms.Button btnView;
-
-		// GroupBox pre ChangeMatrix (resize cleaned na Nx N)
-		private System.Windows.Forms.GroupBox grpChangeMatrix;
-		// Label pre ChangeMatrix
-		private System.Windows.Forms.Label lblChangeMatrix;
-		// ComboBox pre výber veľkosti matice (16, 32, 64, 128)
-		private System.Windows.Forms.ComboBox cboChangeMatrix;
-		// PictureBox pre zobrazenie resized matice
-		private System.Windows.Forms.PictureBox picMatrix;
 
 		// ========================= NOVÉ KONTROLY PRE PIPELINE PARAMETRE (KAPITOLA 4) =========================
 
@@ -138,6 +121,14 @@
 		// Label zobrazujúci aktuálnu hodnotu intenzity
 		private System.Windows.Forms.Label lblLedValue;
 
+		// ========================= PARAMETRE KAMERY (ESP32-CAM) =========================
+		// GroupBox zobrazujúci nastavenia kamery (len čítanie – hodnoty z Settings.json)
+		private System.Windows.Forms.GroupBox grpCamParams;
+		private System.Windows.Forms.Label lblCamResolution;
+		private System.Windows.Forms.Label lblCamBrightness;
+		private System.Windows.Forms.Label lblCamContrast;
+		private System.Windows.Forms.Label lblCamSaturation;
+
 		/// <summary>
 		/// Uvoľnenie zdrojov
 		/// </summary>
@@ -159,7 +150,6 @@
 			btnDebugContrast = new Button();
 			btnDebugBinary = new Button();
 			btnDebugCleaned = new Button();
-			btnTestSegmentation = new Button();
 			picCleaned = new PictureBox();
 			grpThreshold = new GroupBox();
 			lblBlockSize = new Label();
@@ -188,14 +178,6 @@
 			nudWidth = new NumericUpDown();
 			nudY = new NumericUpDown();
 			nudX = new NumericUpDown();
-			grpResize = new GroupBox();
-			btnView = new Button();
-			lblResize = new Label();
-			nudResize = new NumericUpDown();
-			grpChangeMatrix = new GroupBox();
-			lblChangeMatrix = new Label();
-			cboChangeMatrix = new ComboBox();
-			picMatrix = new PictureBox();
 			grpBilateral = new GroupBox();
 			lblBilateralD = new Label();
 			nudBilateralD = new NumericUpDown();
@@ -232,7 +214,13 @@
 			chkLed = new CheckBox();
 			trkLedIntensity = new TrackBar();
 			lblLedValue = new Label();
+			grpCamParams = new GroupBox();
+			lblCamResolution = new Label();
+			lblCamBrightness = new Label();
+			lblCamContrast = new Label();
+			lblCamSaturation = new Label();
 			grpLed.SuspendLayout();
+			grpCamParams.SuspendLayout();
 			((System.ComponentModel.ISupportInitialize)trkLedIntensity).BeginInit();
 			grpDebug.SuspendLayout();
 			((System.ComponentModel.ISupportInitialize)picCleaned).BeginInit();
@@ -247,10 +235,6 @@
 			((System.ComponentModel.ISupportInitialize)nudWidth).BeginInit();
 			((System.ComponentModel.ISupportInitialize)nudY).BeginInit();
 			((System.ComponentModel.ISupportInitialize)nudX).BeginInit();
-			grpResize.SuspendLayout();
-			((System.ComponentModel.ISupportInitialize)nudResize).BeginInit();
-			grpChangeMatrix.SuspendLayout();
-			((System.ComponentModel.ISupportInitialize)picMatrix).BeginInit();
 			grpBilateral.SuspendLayout();
 			((System.ComponentModel.ISupportInitialize)nudBilateralD).BeginInit();
 			((System.ComponentModel.ISupportInitialize)nudBilateralSigmaColor).BeginInit();
@@ -275,7 +259,6 @@
 			grpDebug.Controls.Add(btnDebugContrast);
 			grpDebug.Controls.Add(btnDebugBinary);
 			grpDebug.Controls.Add(btnDebugCleaned);
-			grpDebug.Controls.Add(btnTestSegmentation);
 			grpDebug.Location = new Point(580, 372);
 			grpDebug.Name = "grpDebug";
 			grpDebug.Size = new Size(200, 165);
@@ -313,16 +296,7 @@
 			btnDebugCleaned.UseVisualStyleBackColor = true;
 			btnDebugCleaned.Click += btnDebugCleaned_Click;
 			// 
-			// btnTestSegmentation
-			// 
-			btnTestSegmentation.Location = new Point(15, 118);
-			btnTestSegmentation.Name = "btnTestSegmentation";
-			btnTestSegmentation.Size = new Size(170, 25);
-			btnTestSegmentation.TabIndex = 3;
-			btnTestSegmentation.Text = "Test Segmentation";
-			btnTestSegmentation.UseVisualStyleBackColor = true;
-			btnTestSegmentation.Click += btnTestSegmentation_Click;
-			// 
+			//
 			// picCleaned
 			// 
 			picCleaned.BorderStyle = BorderStyle.FixedSingle;
@@ -603,89 +577,6 @@
 			nudX.Size = new Size(60, 23);
 			nudX.TabIndex = 0;
 			nudX.Value = new decimal(new int[] { 22, 0, 0, 0 });
-			// 
-			// grpResize
-			// 
-			grpResize.Controls.Add(btnView);
-			grpResize.Controls.Add(lblResize);
-			grpResize.Controls.Add(nudResize);
-			grpResize.Location = new Point(222, 372);
-			grpResize.Name = "grpResize";
-			grpResize.Size = new Size(146, 90);
-			grpResize.TabIndex = 5;
-			grpResize.TabStop = false;
-			grpResize.Text = "Resize";
-			// 
-			// btnView
-			// 
-			btnView.Location = new Point(60, 59);
-			btnView.Name = "btnView";
-			btnView.Size = new Size(75, 25);
-			btnView.TabIndex = 2;
-			btnView.Text = "VIEW";
-			btnView.UseVisualStyleBackColor = true;
-			btnView.Click += btnView_Click;
-			// 
-			// lblResize
-			// 
-			lblResize.AutoSize = true;
-			lblResize.Location = new Point(12, 28);
-			lblResize.Name = "lblResize";
-			lblResize.Size = new Size(42, 15);
-			lblResize.TabIndex = 1;
-			lblResize.Text = "Resize:";
-			// 
-			// nudResize
-			// 
-			nudResize.DecimalPlaces = 1;
-			nudResize.Increment = new decimal(new int[] { 5, 0, 0, 65536 });
-			nudResize.Location = new Point(75, 26);
-			nudResize.Maximum = new decimal(new int[] { 10, 0, 0, 0 });
-			nudResize.Minimum = new decimal(new int[] { 5, 0, 0, 65536 });
-			nudResize.Name = "nudResize";
-			nudResize.Size = new Size(60, 23);
-			nudResize.TabIndex = 0;
-			nudResize.Value = new decimal(new int[] { 40, 0, 0, 65536 });
-			// 
-			// grpChangeMatrix
-			// 
-			grpChangeMatrix.Controls.Add(lblChangeMatrix);
-			grpChangeMatrix.Controls.Add(cboChangeMatrix);
-			grpChangeMatrix.Location = new Point(642, 730);
-			grpChangeMatrix.Name = "grpChangeMatrix";
-			grpChangeMatrix.Size = new Size(200, 90);
-			grpChangeMatrix.TabIndex = 9;
-			grpChangeMatrix.TabStop = false;
-			grpChangeMatrix.Text = "ChangeMatrix";
-			// 
-			// lblChangeMatrix
-			// 
-			lblChangeMatrix.AutoSize = true;
-			lblChangeMatrix.Location = new Point(12, 28);
-			lblChangeMatrix.Name = "lblChangeMatrix";
-			lblChangeMatrix.Size = new Size(65, 15);
-			lblChangeMatrix.TabIndex = 0;
-			lblChangeMatrix.Text = "Matrix size:";
-			// 
-			// cboChangeMatrix
-			// 
-			cboChangeMatrix.DropDownStyle = ComboBoxStyle.DropDownList;
-			cboChangeMatrix.FormattingEnabled = true;
-			cboChangeMatrix.Items.AddRange(new object[] { 16, 32, 64, 128 });
-			cboChangeMatrix.Location = new Point(100, 26);
-			cboChangeMatrix.Name = "cboChangeMatrix";
-			cboChangeMatrix.Size = new Size(80, 23);
-			cboChangeMatrix.TabIndex = 1;
-			// 
-			// picMatrix
-			// 
-			picMatrix.BorderStyle = BorderStyle.FixedSingle;
-			picMatrix.Location = new Point(832, 372);
-			picMatrix.Name = "picMatrix";
-			picMatrix.Size = new Size(150, 118);
-			picMatrix.SizeMode = PictureBoxSizeMode.Zoom;
-			picMatrix.TabIndex = 10;
-			picMatrix.TabStop = false;
 			// 
 			// grpBilateral
 			// 
@@ -1012,6 +903,51 @@
 			picRight.TabIndex = 5;
 			picRight.TabStop = false;
 			//
+			// grpCamParams
+			//
+			grpCamParams.Controls.Add(lblCamResolution);
+			grpCamParams.Controls.Add(lblCamBrightness);
+			grpCamParams.Controls.Add(lblCamContrast);
+			grpCamParams.Controls.Add(lblCamSaturation);
+			grpCamParams.Location = new Point(842, 372);
+			grpCamParams.Name = "grpCamParams";
+			grpCamParams.Size = new Size(160, 120);
+			grpCamParams.TabIndex = 16;
+			grpCamParams.TabStop = false;
+			grpCamParams.Text = "Kamera (ESP32-CAM)";
+			//
+			// lblCamResolution
+			//
+			lblCamResolution.AutoSize = true;
+			lblCamResolution.Location = new Point(8, 22);
+			lblCamResolution.Name = "lblCamResolution";
+			lblCamResolution.TabIndex = 0;
+			lblCamResolution.Text = "Rozlíšenie: –";
+			//
+			// lblCamBrightness
+			//
+			lblCamBrightness.AutoSize = true;
+			lblCamBrightness.Location = new Point(8, 42);
+			lblCamBrightness.Name = "lblCamBrightness";
+			lblCamBrightness.TabIndex = 1;
+			lblCamBrightness.Text = "Jas: –";
+			//
+			// lblCamContrast
+			//
+			lblCamContrast.AutoSize = true;
+			lblCamContrast.Location = new Point(8, 62);
+			lblCamContrast.Name = "lblCamContrast";
+			lblCamContrast.TabIndex = 2;
+			lblCamContrast.Text = "Kontrast: –";
+			//
+			// lblCamSaturation
+			//
+			lblCamSaturation.AutoSize = true;
+			lblCamSaturation.Location = new Point(8, 82);
+			lblCamSaturation.Name = "lblCamSaturation";
+			lblCamSaturation.TabIndex = 3;
+			lblCamSaturation.Text = "Saturácia: –";
+			//
 			// grpLed
 			//
 			grpLed.Controls.Add(chkLed);
@@ -1061,7 +997,6 @@
 			// MainForm
 			//
 			ClientSize = new Size(1012, 900);
-			Controls.Add(grpResize);
 			Controls.Add(grpRoi);
 			Controls.Add(picFrame);
 			Controls.Add(nudOnnxConfidence);
@@ -1074,13 +1009,12 @@
 			Controls.Add(picCleaned);
 			Controls.Add(grpThreshold);
 			Controls.Add(grpDebug);
-			Controls.Add(grpChangeMatrix);
-			Controls.Add(picMatrix);
 			Controls.Add(grpBilateral);
 			Controls.Add(grpClahe);
 			Controls.Add(grpMorphology);
 			Controls.Add(grpNumReg);
 			Controls.Add(grpLed);
+			Controls.Add(grpCamParams);
 			Name = "MainForm";
 			Text = "ESP32-CAM – nultá verzia";
 			grpDebug.ResumeLayout(false);
@@ -1098,12 +1032,6 @@
 			((System.ComponentModel.ISupportInitialize)nudWidth).EndInit();
 			((System.ComponentModel.ISupportInitialize)nudY).EndInit();
 			((System.ComponentModel.ISupportInitialize)nudX).EndInit();
-			grpResize.ResumeLayout(false);
-			grpResize.PerformLayout();
-			((System.ComponentModel.ISupportInitialize)nudResize).EndInit();
-			grpChangeMatrix.ResumeLayout(false);
-			grpChangeMatrix.PerformLayout();
-			((System.ComponentModel.ISupportInitialize)picMatrix).EndInit();
 			grpBilateral.ResumeLayout(false);
 			grpBilateral.PerformLayout();
 			((System.ComponentModel.ISupportInitialize)nudBilateralD).EndInit();
@@ -1128,6 +1056,8 @@
 			grpLed.ResumeLayout(false);
 			grpLed.PerformLayout();
 			((System.ComponentModel.ISupportInitialize)trkLedIntensity).EndInit();
+			grpCamParams.ResumeLayout(false);
+			grpCamParams.PerformLayout();
 			ResumeLayout(false);
 		}
 	}

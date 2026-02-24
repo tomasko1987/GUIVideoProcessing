@@ -52,7 +52,7 @@
         <div class="header">
             <h1>GUIVideoProcessing</h1>
             <p>Dokumentacia aktualneho stavu aplikacie</p>
-            <p style="font-size: 0.9em; margin-top: 10px;">.NET 8 | Windows Forms | OpenCvSharp4 | ONNX Runtime | 2026-02-18</p>
+            <p style="font-size: 0.9em; margin-top: 10px;">.NET 8 | Windows Forms | OpenCvSharp4 | ONNX Runtime | 2026-02-22</p>
         </div>
 
         <!-- NAVIGACIA -->
@@ -127,9 +127,6 @@
  [ProcessFrame]  &ndash; vyrez ROI z frame, nakreslenie obdlznika
       |
       v
- [Up()]          &ndash; resize ROI (scale 1-5x)
-      |
-      v
  [Pipeline()]    &ndash; image processing (8 krokov)
       |
       +-----&gt; [ONNX model]     &ndash; neuronova siet (64x98 grayscale &rarr; cifra 0-9)
@@ -202,7 +199,6 @@
                     <tr><td><code>ROIY</code></td><td>56</td><td>Y suradnica ROI v percentach (0-100)</td></tr>
                     <tr><td><code>ROIWidth</code></td><td>17</td><td>Sirka ROI v percentach (0-100)</td></tr>
                     <tr><td><code>ROIHeight</code></td><td>23</td><td>Vyska ROI v percentach (0-100)</td></tr>
-                    <tr><td><code>ResizeScale</code></td><td>4.0</td><td>Faktor zvacsenenia ROI (1-5x)</td></tr>
                     <tr><td><code>FromLeft</code></td><td>50</td><td>Percento sirky pre lavu cifru (1-100%)</td></tr>
                     <tr><td><code>FromRight</code></td><td>50</td><td>Percento sirky pre pravu cifru (1-100%)</td></tr>
                 </table>
@@ -237,6 +233,17 @@
                     <tr><td><code>MySqlTable</code></td><td>"numreg_readings"</td><td>Nazov tabulky</td></tr>
                     <tr><td><code>MySqlConnectTimeoutSeconds</code></td><td>5</td><td>Timeout pripojenia</td></tr>
                     <tr><td><code>MySqlReconnectDelaySeconds</code></td><td>5</td><td>Delay medzi reconnect pokusmi</td></tr>
+                
+                    <tr><td colspan="3" style="background:#e8f4f8; font-weight:bold; padding:10px;">MJPEG Stream parametre</td></tr>
+                    <tr><td><code>MjpegConnectTimeoutSec</code></td><td>15</td><td>Timeout pre TCP spojenie a HTTP hlavicky (sekundy). Max zaseknutie = tato hodnota.</td></tr>
+                    <tr><td><code>MjpegFrameTimeoutSec</code></td><td>5</td><td>Timeout pre prijem dat &ndash; ak 5s nic nepride, reconnect.</td></tr>
+                    <tr><td><code>MjpegReconnectBackoffMaxSec</code></td><td>60</td><td>Max. backoff medzi pokusmi v sekundach. Rastie linearne (1s, 2s, ..., 60s), potom zostava na maxime. Bez limitu pokusov &ndash; bezi donekonecna kym operator nestlaci STOP.</td></tr>
+
+                    <tr><td colspan="3" style="background:#e8f4f8; font-weight:bold; padding:10px;">Parametre kamery (ESP32-CAM) &ndash; posielaju sa jednorazovo pri START</td></tr>
+                    <tr><td><code>CamFramesize</code></td><td>11</td><td>Rozlisenie kamery. 11 = HD (1280&times;720). Enum: 0=96&times;96, 5=QVGA, 8=VGA, 11=HD, 13=UXGA.</td></tr>
+                    <tr><td><code>CamBrightness</code></td><td>2</td><td>Jas kamery. Rozsah: &minus;2 az +2.</td></tr>
+                    <tr><td><code>CamContrast</code></td><td>2</td><td>Kontrast kamery. Rozsah: &minus;2 az +2.</td></tr>
+                    <tr><td><code>CamSaturation</code></td><td>2</td><td>Saturacia kamery. Rozsah: &minus;2 az +2.</td></tr>
                 </table>
 
                 <h3>4.5 Load / Save</h3>
@@ -259,7 +266,7 @@
 
                 <p>
                     Metoda <code>Pipeline()</code> v <code>MainForm.cs</code> spracovava kazdy frame v 8 krokoch.
-                    Vstupom je <code>_lastUp</code> (zvacseneny ROI), vystupom su rozpoznane cifry.
+                    Vstupom je <code>_lastRoi</code> (ROI vyrez z frame), vystupom su rozpoznane cifry.
                     Vsetky parametre su citane z UI kontroliek v realnom case (thread-safe cez <code>GetNudValueSafe</code>).
                 </p>
 
@@ -321,10 +328,10 @@
 <pre><code>Frame (BGR)
   |
   v
-[ROI vyrez] --&gt; [Resize 4x] --&gt; upCopy (BGR)
-                                    |
-                                    v
-                              [1. Grayscale] --&gt; gray
+[ROI vyrez] --&gt; roiCopy (BGR)
+                    |
+                    v
+              [1. Grayscale] --&gt; gray
                                     |
                                     v
                               [2. Bilateral] --&gt; smooth
@@ -444,81 +451,170 @@
             <!-- 7. STREAM A WATCHDOG -->
             <!-- ============================================ -->
             <div class="chapter" id="s7">
-                <h2>7. Stream Capture a Watchdog</h2>
-
-                <h3>7.1 CaptureLoop</h3>
-                <p>
-                    Metoda <code>CaptureLoop(CancellationToken)</code> bezi na background thread-e.
-                    V nekonecnej slucke cita framy z <code>VideoCapture</code> a spracovava ich.
-                </p>
-
-                <ol>
-                    <li><code>_cap.Read(frame)</code> pod <code>_capLock</code></li>
-                    <li>Ak OK: <code>ProcessFrame</code> &rarr; <code>Up</code> &rarr; <code>Pipeline</code> &rarr; UI update</li>
-                    <li>Ak FAIL: watchdog logika (vid nizsie)</li>
-                </ol>
-
-                <h3>7.2 Watchdog (auto-reconnect)</h3>
-                <p>
-                    Watchdog monitoruje zdravie streamu a automaticky sa pokusi o reconnect pri vypadku.
-                </p>
-
-                <table>
-                    <tr><th>Parameter</th><th>Hodnota</th><th>Popis</th></tr>
-                    <tr><td><code>noFrameTimeout</code></td><td>5s</td><td>Max. cas bez validneho frame</td></tr>
-                    <tr><td><code>failureThreshold</code></td><td>50</td><td>Max. pocet zlyhaani po sebe</td></tr>
-                    <tr><td><code>failedReadSleepMs</code></td><td>10ms</td><td>Pauza pri fail-loop-e (ochrana CPU)</td></tr>
-                    <tr><td><code>maxReconnectAttempts</code></td><td>50</td><td>Max. celkovy pocet reconnect pokusov</td></tr>
-                </table>
-
-                <h4>Reconnect mechanizmus</h4>
-<pre><code>Frame OK?  --yes--&gt;  reset pocitadiel, pokracuj normalne
-    |
-    no
-    |
-    v
-consecutiveReadFailures++, sleep 10ms
-    |
-    v
-Dosiahnuty threshold?  --no--&gt;  continue (skusi dalsi Read)
-    |
-    yes
-    |
-    v
-totalReconnectAttempts++
-    |
-    v
-&gt; 50 pokusov?  --yes--&gt;  StopCapture(), KONIEC
-    |
-    no
-    |
-    v
-Exponencialny backoff: sleep min(1000 * attempt, 30000) ms
-    |
-    v
-TryReconnectCapture(url)  &ndash;  Release + Dispose stary, new VideoCapture(url)
-    |
-    v
-Reset consecutiveReadFailures, continue</code></pre>
+                <h2 id="s7">7. Stream Capture &ndash; HttpClient MJPEG</h2>
 
                 <div class="info-box">
-                    Po kazdom uspesnom frame sa <code>totalReconnectAttempts</code> resetuje na 0.
-                    Takze ak stream funguje hodinu a potom vypadne, dostane opat plnych 50 pokusov.
+                    <strong>Architekturalna zmena (2026-02-22):</strong> Predchadzajuci pristup pouzival <code>VideoCapture</code> (OpenCV/C++ wrapper),
+                    ktory nemal timeout pre TCP spojenie a pri uplnom vypadku kamery sa zasekol indefinitne &ndash; az na casy dlhsie ako 6 minut (zachytene v logu).
+                    Nova implementacia pouziva <code>HttpClient</code> (.NET managed) s explicitnymi CancellationToken timeoutmi
+                    a deterministickym spravanim pri vsetkych chybovych stavoch.
                 </div>
 
-                <h3>7.3 TryReconnectCapture</h3>
+                <h3>7.1 Princip MJPEG streamu</h3>
                 <p>
-                    Bezpecne obnovi <code>VideoCapture</code>:
-                    pod <code>_capLock</code> spravi <code>Release()</code> + <code>Dispose()</code> stareho capture,
-                    vytvori novy <code>new VideoCapture(url)</code>.
-                    Ak <code>IsOpened() == false</code>, watchdog skusi znova neskor.
+                    ESP32-CAM posiela MJPEG stream ako nekonecnu HTTP odpoved formatu
+                    <code>multipart/x-mixed-replace</code>. Server otvori TCP spojenie a kontinualne posiela
+                    jednotlive JPEG ramce oddelene <code>--boundary</code> reazcom:
                 </p>
+<pre><code>HTTP/1.1 200 OK
+Content-Type: multipart/x-mixed-replace; boundary=frame
+
+--frame
+
+Content-Type: image/jpeg
+
+Content-Length: 8432
+
+
+
+[8432 bajtov JPEG dat]
+--frame
+
+Content-Type: image/jpeg
+
+...</code></pre>
+                <p>
+                    Namiesto parsovania HTTP hlaviciek aplikacia hlada JPEG hranice priamo v byte streame pomocou
+                    JPEG markerov &ndash; standardizovane hodnoty definovane v JFIF/JPEG specifikacii:
+                </p>
+                <ul>
+                    <li>JPEG <strong>zaciatok (SOI)</strong>: sekvencia bajtov <code>0xFF 0xD8 0xFF</code></li>
+                    <li>JPEG <strong>koniec (EOI)</strong>: sekvencia bajtov <code>0xFF 0xD9</code></li>
+                </ul>
+                <p>
+                    Tento pristup je robustnejsi ako parsovanie Content-Length &ndash; funguje aj ked kamera vynecha
+                    alebo zmeni format hlaviciek, a nevyzaduje implementaciu HTTP chunked parsera.
+                </p>
+
+                <h3>7.2 Architektura CaptureLoop &ndash; dve slucky</h3>
+                <p>
+                    Metoda <code>CaptureLoop(CancellationToken)</code> bezi na background thread-e (cez <code>Task.Run</code>)
+                    a ma dvojurovnovu strukturu:
+                </p>
+<pre><code>VONKAJSIA SLUCKA (reconnect loop) – bezi donekonecna, stopne ju len STOP
+  |
+  +-- Backoff sleep: min(pokus * 1s, MjpegReconnectBackoffMaxSec)
+  |   pokus 1=1s, 2=2s, ... 60=60s, 61=60s, 62=60s, ...
+  |   WaitOne(backoffMs) – prerusenie okamzite pri STOP
+  |
+  +-- HttpClient.GetAsync(url, ResponseHeadersRead, connectCts[MjpegConnectTimeoutSec])
+  |   Timeout: OperationCanceledException &rarr; WARN log, continue do vonkajsej slucky
+  |
+  +-- VNUTORNA SLUCKA (stream read loop)
+      |
+      +-- stream.ReadAsync(64KB chunk, frameCts[MjpegFrameTimeoutSec])
+      |   Timeout: OperationCanceledException &rarr; WARN log, break do vonkajsej slucky
+      |   bytesRead==0: server zatvoril spojenie &rarr; break
+      |
+      +-- Pridanie dat do 4MB akumulacneho buffera
+      |
+      +-- JPEG EXTRAKCNA SLUCKA
+          |
+          +-- MjpegFindSOI(): hlada 0xFF 0xD8 0xFF od zaciatku buffera
+          +-- MjpegFindEOI(): hlada 0xFF 0xD9 za SOI
+          |
+          +-- Ak kompletny JPEG: Cv2.ImDecode(jpegBytes) &rarr; Mat
+          |   Prvy uspesny frame: totalReconnectAttempts = 0 (reset)
+          |
+          +-- ProcessFrame(frame) &rarr; Pipeline()
+          +-- BitmapConverter.ToBitmap() &rarr; UI update cez Invoke()</code></pre>
+
+                <h3>7.3 Timeout parametre (Settings.json)</h3>
+
+                <table>
+                    <tr><th>Parameter</th><th>Default</th><th>Co osetruje</th></tr>
+                    <tr>
+                        <td><code>MjpegConnectTimeoutSec</code></td><td>15s</td>
+                        <td>Max. cas na nadviazanie TCP spojenia a prijatie HTTP hlaviciek.
+                        Pri offline kamere: max 15s zablokovanie miesto predchadzajuceho indefinitneho.</td>
+                    </tr>
+                    <tr>
+                        <td><code>MjpegFrameTimeoutSec</code></td><td>5s</td>
+                        <td>Max. cas bez jedineho bajtu zo streamu po nadviazani spojenia.
+                        Osetruje stav ked kamera prestane posielat data bez zatvorenia TCP spojenia.</td>
+                    </tr>
+                    <tr>
+                        <td><code>MjpegReconnectBackoffMaxSec</code></td><td>60s</td>
+                        <td>Max. backoff medzi pokusmi. Backoff rastie linearne: pokus 1=1s, pokus 2=2s, ..., pokus 60+=60s. Bez limitu poctu pokusov &ndash; stream sa pokusa donekonecna az kym operator nestlaci STOP.</td>
+                    </tr>
+                </table>
+
+                <h3>7.4 Krok za krokom: co sa stane pri vypadku kamery</h3>
+
+<pre><code>t=0:00  Stream bezi normalne, prijimaju sa JPEG ramce
+
+t=0:16  Kamera sa odpoji (vypadok napajania)
+
+t=0:16  stream.ReadAsync() - frameCts vyprsi po 5s (MjpegFrameTimeoutSec)
+        &rarr; OperationCanceledException
+        &rarr; WARN: "STREAM: Za 5s neprišli žiadne dáta (frame timeout). Výpadok od 00:16:00. Restartujem spojenie."
+        &rarr; disconnectedAt = 00:16:00
+        &rarr; break z vnutornej slucky
+
+t=0:21  WARN: "STREAM [pokus #1]: Čakám 1s pred ďalším pokusom (max=60s, výpadok trvá 5s)."
+t=0:22  INFO: "STREAM [pokus #1]: Pripájam sa na http://... (connect timeout=15s, frame timeout=5s)..."
+        &rarr; Kamera nedostupna, TCP timeout
+        &rarr; WARN: "STREAM [pokus #1]: Timeout pripojenia po 15s (výpadok 21s). Skúšam znova."
+        &rarr; continue
+
+t=0:37  WARN: "STREAM [pokus #2]: Čakám 2s pred ďalším pokusom (max=60s, výpadok trvá 21s)."
+t=0:39  INFO: "STREAM [pokus #2]: Pripájam sa na http://..."
+        &rarr; timeout po 15s ...
+        ...
+        (kamera sa zapne o 2 minuty, pokusy pokracuju: 3s, 4s, 5s...)
+        ...
+t=2:10  INFO: "STREAM [pokus #8]: Pripojené. HTTP 200 OK. Čakám na dáta..."
+        &rarr; stream sa otvori, prichadzaju JPEG ramce
+        &rarr; INFO: "STREAM: Stream OBNOVENÝ po 8 pokus(och), výpadok trval 130s."
+        &rarr; disconnectedAt = null, totalReconnectAttempts = 0 (RESET)
+
+t=2:10  Normalny chod pokracuje</code></pre>
+
+                <div class="success-box">
+                    <strong>Klucova vlastnost:</strong> Kazdy stav ma deterministicky timeout. Aplikacia sa nikdy nezasekne
+                    na dlhsie ako <code>MjpegConnectTimeoutSec + MjpegFrameTimeoutSec</code> (default 20s).
+                </div>
+
+                <h3>7.5 Pamatova bezpecnost</h3>
+                <p>
+                    Predchadzajuca implementacia mala potencialny memory leak: ak <code>new VideoCapture(url)</code>
+                    nikdy neskoncila, C++ objekt ostal v pamati natrvalo (GC nevidel unmanaged pamat).
+                    Nova implementacia:
+                </p>
+                <ul>
+                    <li><code>HttpClient</code> je cisto .NET managed &ndash; GC ho spravuje standardne</li>
+                    <li><code>CancellationToken</code> preruší <code>ReadAsync</code> okamzite a deterministicky</li>
+                    <li><code>HttpResponseMessage</code> je ulozeny v <code>_mjpegResponse</code> pod <code>_streamLock</code>
+                        a Disposed pri <code>StopCapture()</code> ako doplnkova ochrana</li>
+                    <li>Akumulacny buffer (<code>byte[] accBuf</code>, 4MB) je stack-allocated raz na zaciatku
+                        a reusovany &ndash; ziadna alokacia per-frame</li>
+                </ul>
+
+                <h3>7.6 Porovnanie VideoCapture vs HttpClient</h3>
+                <table>
+                    <tr><th>Vlastnost</th><th>VideoCapture (stary)</th><th>HttpClient (novy)</th></tr>
+                    <tr><td>Timeout pri spojeni</td><td style="color:#c0392b">&#10007; Ziadny (indefinitne)</td><td style="color:#27ae60">&#10003; MjpegConnectTimeoutSec (15s)</td></tr>
+                    <tr><td>Timeout per-frame</td><td style="color:#c0392b">&#10007; Ziadny</td><td style="color:#27ae60">&#10003; MjpegFrameTimeoutSec (5s)</td></tr>
+                    <tr><td>Zaseknutie pri offline kamere</td><td style="color:#c0392b">&#10007; Az niekolko minut</td><td style="color:#27ae60">&#10003; Max MjpegConnectTimeoutSec</td></tr>
+                    <tr><td>Zombie vlakna</td><td style="color:#c0392b">&#10007; Mozne (C++ thread)</td><td style="color:#27ae60">&#10003; Nemozne (cts.Cancel)</td></tr>
+                    <tr><td>Unmanaged pamat</td><td style="color:#c0392b">&#10007; OpenCV C++ objekt</td><td style="color:#27ae60">&#10003; Cisto .NET managed</td></tr>
+                    <tr><td>Prerušitelnost</td><td style="color:#c0392b">&#10007; Neprerušitelny natívny kod</td><td style="color:#27ae60">&#10003; Okamzite cez CancellationToken</td></tr>
+                    <tr><td>Kompatibilita s Web migr.</td><td style="color:#c0392b">&#10007; WinForms-only</td><td style="color:#27ae60">&#10003; Rovnaky pattern v ASP.NET Core</td></tr>
+                </table>
+
             </div>
 
-            <!-- ============================================ -->
-            <!-- 8. LOGOVANIE A MYSQL -->
-            <!-- ============================================ -->
-            <div class="chapter" id="s8">
+<div class="chapter" id="s8">
                 <h2>8. Logovanie a MySQL</h2>
 
                 <h3>8.1 Logger (Logger.cs)</h3>
@@ -529,13 +625,13 @@ Reset consecutiveReadFailures, continue</code></pre>
                     <li><strong>Rotacia podla velkosti</strong> &ndash; Max 5 MB, potom suffix <code>_001</code>, <code>_002</code>...</li>
                     <li><strong>Bounded fronta</strong> &ndash; Max 10 000 poloziek (ochrana proti memory leak)</li>
                     <li><strong>Log levely</strong> &ndash; Debug, Info, Warn, Error</li>
-                    <li><strong>Format</strong> &ndash; <code>2026-02-18 14:30:05.123 | INFO | Sprava</code></li>
+                    <li><strong>Format</strong> &ndash; <code>2026-02-22 14:30:05.123 | INFO | Sprava</code></li>
                 </ul>
 
                 <h3>8.2 res.txt (vysledky rozpoznavania)</h3>
                 <p>
                     Kazde vyhodnotenie sa zapise do <code>logs/res.txt</code> vo formate:
-                    <code>2026-02-18 14:30:05&lt;TAB&gt;70</code>.
+                    <code>2026-02-22 14:30:05&lt;TAB&gt;70</code>.
                 </p>
 
                 <p><strong>Rotacia:</strong> Ked <code>res.txt</code> presiahne 10 MB, premenuje sa na <code>res_old.txt</code>
@@ -595,18 +691,36 @@ Reset consecutiveReadFailures, continue</code></pre>
                 <table>
                     <tr><th>GroupBox</th><th>Parametre</th></tr>
                     <tr><td><code>grpRoi</code></td><td>nudX, nudY, nudWidth, nudHeight, btnRoi</td></tr>
-                    <tr><td><code>grpResize</code></td><td>nudResize, btnView</td></tr>
                     <tr><td><code>grpBilateral</code></td><td>nudBilateralD, nudBilateralSigmaColor, nudBilateralSigmaSpace</td></tr>
                     <tr><td><code>grpClahe</code></td><td>nudCLAHEClipLimit, nudCLAHETileGridSizeX, nudCLAHETileGridSizeY</td></tr>
                     <tr><td><code>grpThreshold</code></td><td>nudBlockSize, nudC, nudMinArea, nudSegmentOnThreshold</td></tr>
                     <tr><td><code>grpMorphology</code></td><td>nudMorphologyKernelSize, nudMorphologyOpenIterations, nudMorphologyCloseIterations</td></tr>
-                    <tr><td><code>grpChangeMatrix</code></td><td>cboChangeMatrix (16/32/64/128), picMatrix</td></tr>
                     <tr><td><code>grpDebug</code></td><td>btnDebugContrast, btnDebugBinary, btnDebugCleaned, btnTestSegmentation</td></tr>
                     <tr><td><code>grpNumReg</code></td><td>lvNumReg (ListView s historiou), btnNumRegClear</td></tr>
+                    <tr><td><code>grpCamParams</code></td><td>lblCamResolution, lblCamBrightness, lblCamContrast, lblCamSaturation (len citanie &ndash; z Settings.json)</td></tr>
                     <tr><td><code>grpLed</code></td><td>chkLed, trkLedIntensity, lblLedValue</td></tr>
                 </table>
 
-                <h3>9.4 LED ovladanie</h3>
+                <h3>9.4 Inicializacia kamery pri START</h3>
+                <p>
+                    Pri kazdom kliknuti na <strong>START</strong> aplikacia pred spustenim streamu posle na kameru
+                    4 HTTP GET prikazy cez endpoint <code>http://&lt;IP&gt;/control?var=&lt;name&gt;&amp;val=&lt;value&gt;</code>:
+                </p>
+                <table>
+                    <tr><th>var</th><th>Hodnota z Settings</th><th>Popis</th></tr>
+                    <tr><td><code>framesize</code></td><td><code>CamFramesize</code> (default 11)</td><td>Rozlisenie: 11 = HD 1280&times;720</td></tr>
+                    <tr><td><code>brightness</code></td><td><code>CamBrightness</code> (default 2)</td><td>Jas: &minus;2 az +2</td></tr>
+                    <tr><td><code>contrast</code></td><td><code>CamContrast</code> (default 2)</td><td>Kontrast: &minus;2 az +2</td></tr>
+                    <tr><td><code>saturation</code></td><td><code>CamSaturation</code> (default 2)</td><td>Saturacia: &minus;2 az +2</td></tr>
+                </table>
+                <p>
+                    Hodnoty su nacitane z <code>Settings.json</code> (property initializers zaistuju defaulty ak chyba JSON zapis).
+                    Na UI su zobrazene v <code>grpCamParams</code> ako read-only labely &ndash; uzivatel ich moze menit iba priamo v Settings.json.
+                    Prikazy sa posielaju sekvenciu cez <code>_httpClient</code> (rovnaky klient ako LED).
+                    Chyba jedneho prikazu neblokuje ostatne &ndash; kazdy je obaleny vlastnym try/catch.
+                </p>
+
+                <h3>9.5 LED ovladanie</h3>
                 <p>
                     Aplikacia moze ovladat LED na ESP32-CAM module cez HTTP GET request:
                     <code>http://&lt;IP&gt;/control?var=led_intensity&amp;val=&lt;0-255&gt;</code>.
@@ -623,8 +737,8 @@ Reset consecutiveReadFailures, continue</code></pre>
                 <h3>10.1 Zamky (locks)</h3>
                 <table>
                     <tr><th>Zamok</th><th>Chrani</th><th>Pouzitie</th></tr>
-                    <tr><td><code>_capLock</code></td><td><code>_cap</code> (VideoCapture)</td><td>Read() vs Dispose() &ndash; zabranuje AccessViolationException</td></tr>
-                    <tr><td><code>_roiLock</code></td><td>_lastRoi, _lastUp, _lastContrast, _lastBinary, _lastCleaned, _lastLeft, _lastRight, _lastMatrix</td><td>Pipeline vs UI thread &ndash; Clone() pod lockom</td></tr>
+                    <tr><td><code>_streamLock</code></td><td><code>_mjpegResponse</code> (HttpResponseMessage)</td><td>CaptureLoop vs StopCapture() &ndash; zabranuje Dispose() pocas citania</td></tr>
+                    <tr><td><code>_roiLock</code></td><td>_lastRoi, _lastContrast, _lastBinary, _lastCleaned, _lastLeft, _lastRight</td><td>Pipeline vs UI thread &ndash; Clone() pod lockom</td></tr>
                     <tr><td><code>_numEvalLock</code></td><td>_nextNumEvalUtc</td><td>Periodicky casovac vyhodnocovania</td></tr>
                     <tr><td><code>_logLock</code></td><td>File logging</td><td>Paralelny zapis do logu</td></tr>
                 </table>
@@ -739,7 +853,7 @@ dotnet run</code></pre>
         <div style="background: #34495e; color: white; padding: 20px 40px; text-align: center;">
             <p style="margin: 0; font-size: 0.9em;">
                 <strong>GUIVideoProcessing &ndash; Dokumentacia aktualneho stavu</strong><br>
-                2026-02-18 | .NET 8 | Vytvorene pomocou Claude Code
+                2026-02-22 | .NET 8 | Vytvorene pomocou Claude Code
             </p>
         </div>
 
